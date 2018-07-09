@@ -43,23 +43,27 @@ currentplayers_df = df[df['TO_YEAR'] == '2018']
 player_ids = currentplayers_df['PERSON_ID'].tolist()
 player_ids = ['1628389', '201167', '203500']
 
-for p in player_ids:
-	print p
-	gamelog_url = 'http://stats.nba.com/stats/playergamelogs?%s&Season=2017-18&SeasonType=Regular Season'%(p) 
-	response = requests.get(gamelog_url, headers = request_header)
-	gamelogs_data = response.text
-	gamelogs_data = json.loads(gamelogs_data)
-	first = gamelogs_data['resultSets']
+# for p in player_ids:
+# 	print p
+# 	gamelog_url = 'http://stats.nba.com/stats/playergamelogs?%s&Season=2017-18&SeasonType=Regular Season'%(p) 
+# 	response = requests.get(gamelog_url, headers = request_header)
+# 	gamelogs_data = response.text
+# 	gamelogs_data = json.loads(gamelogs_data)
+# 	first = gamelogs_data['resultSets']
 
-	col_names = []
-	for w in first:
-	    for col in w['headers']:
-	        col_names.append(col)
+# 	col_names = []
+# 	for w in first:
+# 	    for col in w['headers']:
+# 	        col_names.append(col)
 
-	list = []        
-	for x in first:
-	   for z in x['rowSet']:
-	       list.append(z)
+# 	list = []        
+# 	for x in first:
+# 	   for z in x['rowSet']:
+# 	       list.append(z)
 
-	currentplayer_df = pd.DataFrame(list, columns = col_names)
+# 	currentplayer_df = pd.DataFrame(list, columns = col_names)
 
+# Distinct Team ID
+teams_list = players_df['TEAM_ID'].tolist()
+teams_list = [set(teams_list)]
+print teams_list
