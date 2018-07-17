@@ -55,7 +55,7 @@ def scores_by_season(start_season = '2000-01', end_season = curr_season):
 	edate = "%sT00:00:00"%seasons['end_date'].get(end_season) 
 	print edate
 	# Import Final Scores data
-	games = pd.read_csv('FinalScores2010-2018.csv', sep=',', index_col = False)
+	games = pd.read_csv('Data/FinalScores2010-2018.csv', sep=',', index_col = False)
 	# Slice the dataframe to get only games from the range selected
 	games = games[(games['GAME_DATE_EST'] >= sdate) & (games['GAME_DATE_EST'] <= edate)]
 	# Return only regular season games from this time span
