@@ -100,7 +100,7 @@ for g in game_ids:
 ## Create dataframe containing four factors data by game by team, and save as csv
 print "Creating dataframe from four factors data %s"%(datetime.time(datetime.now()))
 four_factors = pd.DataFrame(four_factors_list, columns = col_names)
-four_factors.to_csv("four_factors_stats_%s-%s.csv"%(first, second))
+four_factors.to_csv("Data/four_factors_stats_%s-%s.csv"%(first, second))
 
 ## Join the two dataframes and clean data
 # Join data on GAME_ID and TEAM_ID
@@ -137,7 +137,7 @@ for i, x in enumerate(game_ids):
 
 # Print merged data to csv
 print "saving dataframe as csv %s"%(datetime.time(datetime.now()))
-final.to_csv('four_factors_final_%s-%s.csv'%(first, second), sep=',')
+final.to_csv('Data/four_factors_final_%s-%s.csv'%(first, second), sep=',')
 
 
 
