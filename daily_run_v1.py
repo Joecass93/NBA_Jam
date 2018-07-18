@@ -5,9 +5,16 @@ import json
 from utilities.config import teams, seasons, request_header
 
 
-### Start by importing list of today's matchups
 
 gameday = '12/01/2017'
+
+### Main function here
+def main():
+	games = scoreboard(gameday)
+
+
+
+### Start by importing list of today's matchups
 def scoreboard(date = gameday):
 	scoreboard_url = 'http://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%gameday
 	response = requests.get(scoreboard_url, headers=request_header)
@@ -30,7 +37,7 @@ def scoreboard(date = gameday):
 		games_today.append(game_info)
 		x = x + 1
 
-
+	# Create dataframe containing info about today's game
 	df = pd.DataFrame(games_today, columns = col_names)
 	
 	print df
@@ -53,4 +60,4 @@ def scoreboard(date = gameday):
 ### Formatting of output 
 
 if __name__ == '__main__':
-	scoreboard()
+	main()
