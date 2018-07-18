@@ -12,6 +12,8 @@ gameday = '12/01/2017'
 def main():
 	games = scoreboard(gameday)
 
+	print games
+
 
 
 ### Start by importing list of today's matchups
@@ -39,8 +41,6 @@ def scoreboard(date = gameday):
 
 	# Create dataframe containing info about today's game
 	df = pd.DataFrame(games_today, columns = col_names)
-	
-	print df
 
 	return df
 

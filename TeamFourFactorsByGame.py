@@ -3,7 +3,7 @@ import ast
 import json
 import pandas as pd
 import numpy as np
-from utilities.config import teams, seasons
+from utilities.config import teams, seasons, request_header
 from argparse import ArgumentParser
 from datetime import datetime
 
@@ -32,15 +32,6 @@ if flags.end_season:
 else:
 	second = curr_season
 
-## Request header
-request_header = {'Connection': 'keep-alive',
-'Cache-Control': 'max-age=0',
-'Upgrade-Insecure-Requests': '1',
-'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36',
-'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-'Accept-Encoding': 'gzip, deflate',
-'Accept-Language': 'en-US,en;q=0.9',
-                 }
 ## Get Team IDs
 team_list = list(teams['nba_teams'].keys())
 
