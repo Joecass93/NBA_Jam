@@ -3,14 +3,21 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import requests
 import datetime
-from datetime import date
+from datetime import date, timedelta
 import time
 
-def main(start_date = None, end_date = None):
-	print "getting spreads"
+def main():
+	start_date = raw_input("Select a start date for the scraper: ")
+	start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+	end_date = raw_input("Select an end date for the scraper: ")
+	end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
+	print "getting spreads from %s to %s"%(start_date, end_date)
+	date_range = range_all_dates(start_date, end_date)
 	soup_rl, time_rl = get_spread_soup('Spreads', '20171201')
 	games = parse_spread_data(soup_rl, '20171201', time_rl)
+	
 	print games
+	print date_range
 	return games
 
 
@@ -184,10 +191,12 @@ def parse_spread_data(soup, date, time, not_ML = True):
 	return df
 	
 
-
-
 def range_all_dates(start_date, end_date):
-	
+	date_range_list = []
+	for n in range(int ((end_date - start_date).days)+1):
+		d = start_date + timedelta(n)
+		d = d.strftime("%Y%m%d")
+		date_range_list.append(d)
 	return date_range_list
 
 if __name__ == "__main__":
