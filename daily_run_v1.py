@@ -76,15 +76,24 @@ def get_daily_stats(input_table):
 
 	return daily_full
 
+### Get spreads for today's games
+def get_daily_odds(date):
 
+
+	return None 
 
 
 ### Math stuffs
+def run_algorithm():
 
 
-
+	return None 
 
 ### Formatting of output 
+def format_daily_output():
+
+
+	return None
 
 if __name__ == '__main__':
 	main()
