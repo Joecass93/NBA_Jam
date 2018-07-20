@@ -7,22 +7,31 @@ from datetime import date, timedelta
 import time
 
 def main():
+	## User enters start date of range
 	start_date = raw_input("Select a start date for the scraper: ")
 	start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+	start_date = start_date.date()
+	## User enters end date of range
 	end_date = raw_input("Select an end date for the scraper: ")
 	end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
+	end_date = end_date.date()
 	print "getting spreads from %s to %s"%(start_date, end_date)
+	## Get all dates from user-defined range
 	date_range = range_all_dates(start_date, end_date)
-	soup_rl, time_rl = get_spread_soup('Spreads', '20171201')
-	games = parse_spread_data(soup_rl, '20171201', time_rl)
+	## Scrape all of the spread data from the date range
+	for i, d in enumerate(date_range):
+		soup_rl, time_rl = get_spread_soup('Spreads', d)
+		games = parse_spread_data(soup_rl, d, time_rl)
+		if i == 0:
+			spreads = games
+		else:
+			spreads = spreads.append(games)
 	
-	print games
-	print date_range
-	return games
+	print spreads
+	return spreads
 
 
 def get_spread_soup(type_of_line, tdate = str(date.today()).replace('-','')):
-	tdate = '20171201'
 
 	if type_of_line == 'Spreads':
 		url_addon = ''
@@ -49,7 +58,7 @@ def parse_spread_data(soup, date, time, not_ML = True):
 		return line
 
 	if not_ML:
-		df = pd.DataFrame(columns=('key','date','time',
+		df = pd.DataFrame(columns=('date','time','side',
                          'team','opp_team','pinnacle_line','pinnacle_odds',
                          '5dimes_line','5dimes_odds',
                          'heritage_line','heritage_odds',
