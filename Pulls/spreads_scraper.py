@@ -5,29 +5,58 @@ import requests
 import datetime
 from datetime import date, timedelta
 import time
+from utilities.config import spread_teams
 
 def main():
 	## User enters start date of range
-	start_date = raw_input("Select a start date for the scraper: ")
-	start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+	try:
+		start_date = raw_input("Select a start date for the scraper (leave blank to get today's spreads): ")
+		start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+		end_date = raw_input("Select an end date for the scraper: ")
+		end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
+	except ValueError:
+		start_date = datetime.date.today()
+		start_date = start_date.strftime("%Y%m%d")
+		start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+		end_date = start_date
 	start_date = start_date.date()
-	## User enters end date of range
-	end_date = raw_input("Select an end date for the scraper: ")
-	end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
 	end_date = end_date.date()
+	
 	print "getting spreads from %s to %s"%(start_date, end_date)
+	
 	## Get all dates from user-defined range
 	date_range = range_all_dates(start_date, end_date)
+	
 	## Scrape all of the spread data from the date range
 	for i, d in enumerate(date_range):
-		soup_rl, time_rl = get_spread_soup('Spreads', d)
-		games = parse_spread_data(soup_rl, d, time_rl)
-		if i == 0:
-			spreads = games
-		else:
-			spreads = spreads.append(games)
+		try:
+			soup_rl, time_rl = get_spread_soup('Spreads', d)
+			games = parse_spread_data(soup_rl, d, time_rl)
+			if i == 0:
+				spreads = games
+			else:
+				spreads = spreads.append(games)
+			spreads_final = format_spreads_data(spreads)
+		except:
+			print "no games on %s"%d
+			empty_spreads = pd.DataFrame(columns = ['date','time','side',
+                         'team','opp_team','pinnacle_line','pinnacle_odds',
+                         '5dimes_line','5dimes_odds',
+                         'heritage_line','heritage_odds',
+                         'bovada_line','bovada_odds',
+                         'betonline_line','betonline_odds', 'away_team_id',
+                         'home_team_id']
+                         )
+			if i == 0:
+				spreads = empty_spreads
+			else:
+				spreads.append(empty_spreads)
+			spreads_final = spreads
+		
+	## Get team_ids and remove unnecessary data
 	
-	print spreads
+
+	print spreads_final
 	return spreads
 
 
@@ -84,7 +113,6 @@ def parse_spread_data(soup, date, time, not_ML = True):
    		info_A = soup.find_all('div', attrs = {'class': 'el-div eventLine-team'})[i].find_all('div')[0].get_text().strip()
    		team_A = info_A
 
-		print team_A
    		try:
    			pinnacle_A = book_line('238', i, 0)
 		except IndexError:
@@ -197,8 +225,12 @@ def parse_spread_data(soup, date, time, not_ML = True):
 		df.loc[counter] = ([A[j] for j in range(len(A))])
 		df.loc[counter + 1] = ([H[j] for j in range(len(H))])
 		counter = counter + 2
+
+		print "Getting %s vs %s"%(team_A, team_H)
+
 	return df
 	
+
 
 def range_all_dates(start_date, end_date):
 	date_range_list = []
@@ -207,6 +239,23 @@ def range_all_dates(start_date, end_date):
 		d = d.strftime("%Y%m%d")
 		date_range_list.append(d)
 	return date_range_list
+
+def format_spreads_data(spreads): ## Get team_ids and merge them into spreads dataframe
+	team_cities = pd.DataFrame.from_dict(spread_teams['nba_teams'], 
+										orient = 'index', 
+										dtype = 'object',
+										columns = ['team_city'])
+	team_cities['team_id'] = team_cities.index
+	spreads = spreads.merge(team_cities, how = 'left', left_on = 'team', right_on = 'team_city')
+	spreads['away_team_id'] = spreads['team_id']
+	spreads = spreads.drop(columns = ['team_id', 'team_city'])
+	spreads = spreads.merge(team_cities, how = 'left', left_on = 'opp_team', right_on = 'team_city')
+	spreads['home_team_id'] = spreads['team_id']
+	spreads = spreads.drop(columns = ['team_id', 'team_city'])
+
+	spreads = spreads[spreads['side'] == 'away']
+
+	return spreads
 
 if __name__ == "__main__":
 	main()

@@ -3,6 +3,7 @@ import numpy as np
 import requests
 import json
 from utilities.config import teams, seasons, request_header
+from pulls import spreads_scraper
 
 
 ## ThIs iS JuSt FoR tEsTiNG
@@ -12,6 +13,7 @@ gameday = '12/01/2017'
 def main():
 	games = scoreboard(gameday)
 	daily_data = get_daily_stats(games)
+	spreads = spreads_scraper.main()
 
 	print daily_data
 
@@ -75,13 +77,6 @@ def get_daily_stats(input_table):
 			daily_full = daily_full.append(daily_away)
 
 	return daily_full
-
-### Get spreads for today's games
-def get_daily_odds(date):
-
-
-	return None 
-
 
 ### Math stuffs
 def run_algorithm():
