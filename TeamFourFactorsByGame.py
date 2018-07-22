@@ -36,6 +36,8 @@ else:
 team_list = list(teams['nba_teams'].keys())
 
 ################################
+def main(type):
+
 
 ######### Functions ############
 def scores_by_season(start_season = '2000-01', end_season = curr_season):
@@ -131,6 +133,7 @@ print "saving dataframe as csv %s"%(datetime.time(datetime.now()))
 final.to_csv('Data/four_factors_final_%s-%s.csv'%(first, second), sep=',')
 
 
-
+if __name__ = "__main__":
+	main()
 
 

@@ -33,6 +33,41 @@ teams = {
 			 }
 		}	
 
+spread_teams = {
+		 'nba_teams': {
+			 1610612737: 'Atlanta',
+			 1610612738: 'Boston',
+			 1610612739: 'Cleveland',
+			 1610612740: 'New Orleans',
+			 1610612741: 'Chicago',
+			 1610612742: 'Dallas',
+			 1610612743: 'Denver',
+			 1610612744: 'Golden State',
+			 1610612745: 'Houston',
+			 1610612746: 'L.A. Clippers',
+			 1610612747: 'L.A. Lakers',
+			 1610612748: 'Miami',
+			 1610612749: 'Milwaukee',
+			 1610612750: 'Minnesota',
+			 1610612751: 'Brooklyn',
+			 1610612752: 'New York',
+			 1610612753: 'Orlando',
+			 1610612754: 'Indiana',
+			 1610612755: 'Philadelphia',
+			 1610612756: 'Phoenix',
+			 1610612757: 'Portland',
+			 1610612758: 'Sacramento',
+			 1610612759: 'San Antonio',
+			 1610612760: 'Oklahoma City',
+			 1610612761: 'Toronto',
+			 1610612762: 'Utah',
+			 1610612763: 'Memphis',
+			 1610612764: 'Washington',
+			 1610612765: 'Detroit',
+			 1610612766: 'Charlotte'
+			 }
+		}	
+
 seasons = {
 		  'start_date': {
 		  	'2000-01': '2000-10-31',

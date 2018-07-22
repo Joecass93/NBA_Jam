@@ -4,6 +4,14 @@ import requests
 import json
 from utilities.config import teams, seasons, request_header
 from pulls import spreads_scraper
+from argparse import ArgumentParser
+import datetime
+
+
+parser = ArgumentParser()
+parser.add_argument("-t", "--only_today", help = "either enter 'yes', or skip for a defined date range")
+parser.add_argument("-s", "--start_season", help="season to start pulling final scores data from: ex. 2000-01", type=str, required=False)
+parser.add_argument("-e", "--end_season", help = "season to end pulling final scores data from: ex. 2000-01", type=str, required=False)
 
 
 ## ThIs iS JuSt FoR tEsTiNG
@@ -12,6 +20,7 @@ gameday = '12/01/2017'
 ### Main function here
 def main():
 	games = scoreboard(gameday)
+	print games
 	daily_data = get_daily_stats(games)
 	spreads = spreads_scraper.main()
 
@@ -19,25 +28,29 @@ def main():
 
 
 ### Start by importing list of today's matchups
-def scoreboard(date):
+def scoreboard(gameday):
+
 	scoreboard_url = 'http://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%gameday
 	response = requests.get(scoreboard_url, headers=request_header)
 	data = response.text
 	data = json.loads(data)
+	if gameday == datetime.date.today().strftime("%m/%d/%Y"):
+		# Pull just pre-game data
+		cleaner = data['resultSets']
+		cleaner = cleaner[0]
+	else: 
+		cleaner = data['resultSets']
+		cleaner = cleaner[1]
 
-	# Pull just pre-game data
-	cleaner = data['resultSets']
-	cleanest = cleaner[0]
-	col_names = cleanest['headers']
-
+	col_names = cleaner['headers']
 	# Check how many games there are today
-	scoreboard_len = len(cleanest['rowSet'])
+	scoreboard_len = len(cleaner['rowSet'])
+	
 	x = 0
 	games_today = []
-
 	# Loop through and get each game's info
 	for x in range(0,scoreboard_len):
-		game_info = cleanest['rowSet'][x]
+		game_info = cleaner['rowSet'][x]
 		games_today.append(game_info)
 		x = x + 1
 
@@ -78,6 +91,10 @@ def get_daily_stats(input_table):
 
 	return daily_full
 
+### Merge spreads data with team stats
+def merge_stats_and_spreads(spreads, daily_data):
+
+	return None
 ### Math stuffs
 def run_algorithm():
 
