@@ -7,20 +7,26 @@ from datetime import date, timedelta
 import time
 from utilities.config import spread_teams
 
-def main():
+def main(gameday = None):
 	## User enters start date of range
-	try:
-		start_date = raw_input("Select a start date for the scraper (leave blank to get today's spreads): ")
+	if gameday:
+		start_date = gameday
+		end_date = gameday
 		start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
-		end_date = raw_input("Select an end date for the scraper: ")
 		end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
-	except ValueError:
-		start_date = datetime.date.today()
-		start_date = start_date.strftime("%Y%m%d")
-		start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
-		end_date = start_date
-	start_date = start_date.date()
-	end_date = end_date.date()
+	else:
+		try:
+			start_date = raw_input("Select a start date for the scraper (leave blank to get today's spreads): ")
+			start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+			end_date = raw_input("Select an end date for the scraper: ")
+			end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
+		except ValueError:
+			start_date = datetime.date.today()
+			start_date = start_date.strftime("%Y%m%d")
+			start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+			end_date = start_date
+		start_date = start_date.date()
+		end_date = end_date.date()
 	
 	print "getting spreads from %s to %s"%(start_date, end_date)
 	
@@ -52,12 +58,8 @@ def main():
 			else:
 				spreads.append(empty_spreads)
 			spreads_final = spreads
-		
-	## Get team_ids and remove unnecessary data
-	
 
-	print spreads_final
-	return spreads
+	return spreads_final
 
 
 def get_spread_soup(type_of_line, tdate = str(date.today()).replace('-','')):

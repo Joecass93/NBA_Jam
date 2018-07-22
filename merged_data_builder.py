@@ -15,16 +15,35 @@ parser.add_argument("-e", "--end_season", help = "season to end pulling final sc
 
 
 ## ThIs iS JuSt FoR tEsTiNG
-gameday = '12/01/2017'
+gameday = ['12/01/2017', '12/02/2017']
+gameday_reform = ['20171201', '20171202']
 
 ### Main function here
 def main():
-	games = scoreboard(gameday)
-	print games
-	daily_data = get_daily_stats(games)
-	spreads = spreads_scraper.main()
+	print "Getting scores..."
+	for j, a in enumerate(gameday):
+		games = scoreboard(a)
+		if j == 0:
+			games_all = games
+		else:
+			games_all = games_all.append(games)
 
-	print daily_data
+	print "Getting spreads..."
+	for k, b in enumerate(gameday_reform):
+		spreads = spreads_scraper.main(b)
+		if k == 0:
+			spreads_all = spreads
+		else:
+			spreads_all = spreads_all.append(spreads)
+
+	print "Getting stats..."
+	daily_data = get_daily_stats(games_all)
+
+	print "Creating merged dataset..."
+	merged = merge_stats_and_spreads(games_all, daily_data, spreads_all)
+
+	print merged
+	return merged
 
 
 ### Start by importing list of today's matchups
@@ -57,20 +76,52 @@ def scoreboard(gameday):
 	# Create dataframe containing info about today's game
 	df = pd.DataFrame(games_today, columns = col_names)
 
+	if gameday == datetime.date.today().strftime("%m/%d/%Y"):
+		# do nothing
+		print "only today's games"
+	else:
+		df['SIDE'] = "away"
+		df.loc[1::2, "SIDE"] = "home"
+		df_home = df[df['SIDE'] == "home"]
+		df_away = df[df['SIDE'] == "away"]
+
+		df = df_home.merge(df_away, how = 'left', on = 'GAME_ID', suffixes = ['_HOME', '_AWAY'])
+		df['HOME_TEAM_ID'] = df['TEAM_ID_HOME']
+		df['AWAY_TEAM_ID'] = df['TEAM_ID_AWAY']
+		df = df.drop(columns = ['TEAM_ID_AWAY', 'TEAM_ID_HOME'])
 	return df
 
 ### Loop through each of today's games and get stats for each team
 def get_daily_stats(input_table):
-
+	four_factors_list = []
+	## Make API call and build resulting dataframe
+	#col_names = ['TEAM_ID', 'EFG_PCT', 'FTA_RATE', 'TM_TOV_PCT', 'OREB_PCT', 'OPP_EFG_PCT', 'OPP_FTA_RATE', 'OPP_TOV_PCT', 'OPP_OREB_PCT']
+	for g in input_table['GAME_ID']:
+		games_url = 'https://stats.nba.com/stats/boxscorefourfactorsv2?StartPeriod=1&StartRange=0&EndPeriod=10&EndRange=2147483647&GameID=%s&RangeType=0'%g
+		response = requests.get(games_url, headers=request_header)
+		## Data cleaning
+		data = response.text
+		data = json.loads(data)
+		cleaner = data['resultSets']
+		cleanest = cleaner[1]
+		col_names = cleanest['headers']
+		try:
+			stats1 = cleanest['rowSet'][0]
+			stats2 = cleanest['rowSet'][1]
+			four_factors_list.append(stats1)
+			four_factors_list.append(stats2)
+		except Exception as e:
+			print e
+	ff_daily = pd.DataFrame(four_factors_list, columns = col_names)
 	# Test dataframe, remove this later
 	# ff_daily = daily_stats_pull.main()
 
-	ff_daily = pd.read_csv('daily_ff_test.csv', sep = ',', header = 0)
-
+	# ff_daily = pd.read_csv('daily_ff_test.csv', sep = ',', header = 0)
+	## Do some data cleaning on the four factors dataframe here
 	for i, y in enumerate(input_table['GAME_ID']):
 		match = input_table[input_table['GAME_ID'] == y]
 		home = match['HOME_TEAM_ID'].item()
-		visitor = match['VISITOR_TEAM_ID'].item()	
+		visitor = match['AWAY_TEAM_ID'].item()	
 		
 		daily_home = ff_daily[ff_daily['TEAM_ID'] == home]
 		daily_away = ff_daily[ff_daily['TEAM_ID'] == visitor]
@@ -89,12 +140,31 @@ def get_daily_stats(input_table):
 			daily_full = daily_full.append(daily_home)
 			daily_full = daily_full.append(daily_away)
 
+	daily_full_home = daily_full[daily_full['SIDE'] == "home"]
+	daily_full_away = daily_full[daily_full['SIDE'] == "away"]
+
+	daily_full = daily_full_home.merge(daily_full_away, how = "left", on = "GAME_ID", suffixes = ['_HOME', '_AWAY'])
+
 	return daily_full
 
 ### Merge spreads data with team stats
-def merge_stats_and_spreads(spreads, daily_data):
+def merge_stats_and_spreads(scores, daily_data, spreads):
+	## Merge box score and four factors data
+	# Remove some unneeded columns from box score
+	scores = scores.drop(columns = ['TEAM_NAME_HOME', 'TEAM_ABBREVIATION_HOME', 'TEAM_CITY_NAME_HOME',
+									'TEAM_NAME_AWAY', 'TEAM_ABBREVIATION_AWAY', 'TEAM_CITY_NAME_AWAY',
+									'SIDE_HOME', 'SIDE_AWAY', 'GAME_DATE_EST_AWAY'])
+	daily_data = daily_data.drop(columns = ['SIDE_HOME', 'SIDE_AWAY'])
+	# merge the dataframs
+	stats = scores.merge(daily_data, how = 'left', on = 'GAME_ID')
+	stats['GAME_DATE'] = (pd.to_datetime(stats['GAME_DATE_EST_HOME'])).astype(str)
+	stats['GAME_DATE'] = stats['GAME_DATE'].replace('-', '', regex = True)
 
-	return None
+	## Merge box score/ff data and spread data (using date, and team ids)
+
+	full_merged = stats.merge(spreads, how = 'left', left_on = ['GAME_DATE','TEAM_ID_HOME', 'TEAM_ID_AWAY'], right_on = ['date', 'home_team_id', 'away_team_id'])
+
+	return full_merged
 ### Math stuffs
 def run_algorithm():
 
