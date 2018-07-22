@@ -58,7 +58,7 @@ def main(gameday = None):
 			else:
 				spreads.append(empty_spreads)
 			spreads_final = spreads
-
+	print spreads_final
 	return spreads_final
 
 
