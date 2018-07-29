@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np 
 import requests
 import json
+from utilities.assets import range_all_dates
 from utilities.config import teams, seasons, request_header
 from pulls import spreads_scraper
 from argparse import ArgumentParser
@@ -10,34 +11,59 @@ import datetime
 
 parser = ArgumentParser()
 parser.add_argument("-t", "--only_today", help = "either enter 'yes', or skip for a defined date range")
-parser.add_argument("-s", "--start_season", help="season to start pulling final scores data from: ex. 2000-01", type=str, required=False)
-parser.add_argument("-e", "--end_season", help = "season to end pulling final scores data from: ex. 2000-01", type=str, required=False)
+parser.add_argument("-ss", "--start_season", help="season to start pulling final scores data from: ex. 2000-01", type=str, required=False)
+parser.add_argument("-es", "--end_season", help = "season to end pulling final scores data from: ex. 2000-01", type=str, required=False)
 
 
 ## ThIs iS JuSt FoR tEsTiNG
-gameday = ['12/01/2017', '12/02/2017']
-gameday_reform = ['20171201', '20171202']
-#gameday = '12/01/2017'
-#gameday_reform = '20171201'
+#gameday = ['12/01/2017', '12/02/2017']
+#gameday_reform = ['20171201', '20171202']
 
-### Main function here
+flags = parser.parse_args()
+
+if flags.start_season:
+	sdate = seasons['start_date'].get(flags.start_season)
+else:
+	sdate = datetime.datetime.now()
+	sdate = '2017-12-01'
+if flags.end_season:
+	edate = seasons['end_date'].get(flags.end_season)
+else:
+	edate = datetime.datetime.now()
+	edate = '2017-12-01'
+
+gameday = range_all_dates(sdate, edate)
+gameday_reform = []
+for m in gameday:
+	reformat_date = datetime.datetime.strptime(m, "%Y/%m/%d").strftime("%Y%m%d")
+	gameday_reform.append(reformat_date)
+
+
 def main():
 	print "Getting scores..."
 	for j, a in enumerate(gameday):
-		games = scoreboard(a)
-		if j == 0:
-			games_all = games
-		else:
-			games_all = games_all.append(games)
+		print a
+		try:
+			games = scoreboard(a)
+			if j == 0:
+				games_all = games
+			else:
+				games_all = games_all.append(games)
+		except:
+			pass
 
 	print "Getting spreads..."
 	for k, b in enumerate(gameday_reform):
-		spreads = spreads_scraper.main(b)
-		if k == 0:
-			spreads_all = spreads
-		else:
-			spreads_all = spreads_all.append(spreads)
-	print spreads_all
+		print b
+		try:
+			spreads = spreads_scraper.main(b)
+			if k == 0:
+				spreads_all = spreads
+			else:
+				spreads_all = spreads_all.append(spreads)
+		except:
+			pass
+
 	print "Getting stats..."
 	daily_data = get_daily_stats(games_all)
 
@@ -45,6 +71,7 @@ def main():
 	merged = merge_stats_and_spreads(games_all, daily_data, spreads_all)
 
 	print merged
+	merged.to_csv('merged_data_file.csv', sep =',')
 	return merged
 
 
