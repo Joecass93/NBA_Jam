@@ -6,7 +6,9 @@ import datetime
 from datetime import date, timedelta
 import time
 from utilities.config import spread_teams
+#from config import spread_teams
 
+## gameday should be str of format 'YYYYMMDD'
 def main(gameday = None):
 	## User enters start date of range
 	if gameday:
@@ -27,12 +29,12 @@ def main(gameday = None):
 			end_date = start_date
 		start_date = start_date.date()
 		end_date = end_date.date()
-	
+
 	print "getting spreads from %s to %s"%(start_date, end_date)
-	
+
 	## Get all dates from user-defined range
 	date_range = range_all_dates(start_date, end_date)
-	
+
 	## Scrape all of the spread data from the date range
 	for i, d in enumerate(date_range):
 		try:
@@ -58,7 +60,7 @@ def main(gameday = None):
 			else:
 				spreads.append(empty_spreads)
 			spreads_final = spreads
-	print spreads_final
+
 	return spreads_final
 
 
@@ -104,7 +106,7 @@ def parse_spread_data(soup, date, time, not_ML = True):
                      'heritage','bovada','betonline'))
 	counter = 0
 	number_of_games = len(soup.find_all('div', attrs = {'class':'el-div eventLine-rotation'}))
-	
+
 	for i in range(0, number_of_games):
 		A = []
 		H = []
@@ -190,13 +192,13 @@ def parse_spread_data(soup, date, time, not_ML = True):
 		betonline_A_odds = betonline_A[betonline_A.find(' ') + 1:]
 		A.append(betonline_A_line)
 		A.append(betonline_A_odds)
-		
+
 		H.append(date)
 		H.append(time)
 		H.append('home')
 		H.append(team_H)
 		H.append(team_A)
-		
+
 		pinnacle_H = pinnacle_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
 		pinnacle_H_line = pinnacle_H[:pinnacle_H.find(' ')]
 		pinnacle_H_odds = pinnacle_H[pinnacle_H.find(' ') + 1:]
@@ -231,7 +233,7 @@ def parse_spread_data(soup, date, time, not_ML = True):
 		print "Getting %s vs %s"%(team_A, team_H)
 
 	return df
-	
+
 
 
 def range_all_dates(start_date, end_date):
@@ -243,8 +245,8 @@ def range_all_dates(start_date, end_date):
 	return date_range_list
 
 def format_spreads_data(spreads): ## Get team_ids and merge them into spreads dataframe
-	team_cities = pd.DataFrame.from_dict(spread_teams['nba_teams'], 
-										orient = 'index', 
+	team_cities = pd.DataFrame.from_dict(spread_teams['nba_teams'],
+										orient = 'index',
 										dtype = 'object',
 										columns = ['team_city'])
 	team_cities['team_id'] = team_cities.index
