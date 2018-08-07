@@ -289,4 +289,4 @@ def clean_predictions(daily_final):
 
 
 if __name__ == '__main__':
-	main('2017-11-01')
+	main()
