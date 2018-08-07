@@ -18,7 +18,7 @@ def range_all_dates(start_date, end_date):
 	print "second %s"%end_date
 	for n in range(int ((end_date - start_date).days)+1):
 		d = start_date + timedelta(n)
-		d = d.strftime("%Y/%m/%d")
+		d = d.strftime("%Y-%m-%d")
 		date_range_list.append(d)
 	return date_range_list
 
