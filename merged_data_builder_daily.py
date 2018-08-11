@@ -1,3 +1,37 @@
+"""
+MERGED DATA BUILDER DAILY
+
+DESCRIPTION:
+This script allows the user to enter a date as a string, and return a dataframe containing game
+predictions for that date.
+
+IMPORTED BY:
+merged_historical_builder
+
+IMPORT(S): config.teams, config.spread_teams, request_header, assets.list_games,
+pulls.spreads_scraper
+
+INPUT(S):
+Date in string format - 'YYYY-MM-DD'
+
+OUTPUT(S):
+Dataframe containing each game for the date selected with the following metrics:
+vegas spread, predicted spread, differential between predicted and actual spread, and ranking
+for each game
+
+FUNCTION(S):
+-- todays_matches(gamedate) -> sends pull request to nba api and returns a dataframe containing information
+about games for a given date
+-- cum_ff_stats(away_id, home_id, gamedate, sequence) ->
+-- format_and_run_daily_stats(dirty_stats) ->
+-- run_daily_algo(match) ->
+-- merged_daily_data(daily_preds, daily_vegas) ->
+-- clean_predictions(daily_final) ->
+
+CREATED/REFACTORED BY: Joe Cassidy / 08.11.2018
+
+"""
+
 import pandas as pd
 import numpy as np
 import datetime
