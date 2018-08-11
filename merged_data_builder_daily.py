@@ -40,6 +40,7 @@ import json
 import time
 from utilities.config import teams, spread_teams, request_header
 from utilities.assets import list_games
+from utilities.db_connection_manager import establish_db_connection
 from pulls import spreads_scraper
 from os.path import expanduser
 from argparse import ArgumentParser
@@ -86,7 +87,7 @@ def main(gamedate = None):
 	daily_preds = format_and_run_daily_stats(todays_ff_cum)
 
 	print "getting todays spreads..."
-	daily_vegas = spreads_scraper.main('20171101')
+	daily_vegas = spreads_scraper.main(gamedate)
 	print daily_vegas
 
 	print "merging data..."
@@ -98,7 +99,14 @@ def main(gamedate = None):
 
 	output.to_csv('%s/projects/NBA_Jam/test_daily.csv'%home_dir, sep = ',')
 
-	print output
+	## if daily run then write dataframe to daily_picks sql table
+	if gamedate == '2017-11-01':
+		engine = establish_db_connection('sqlalchemy')
+		conn = engine.connect()
+		output.to_sql(name = 'daily_picks', con = conn, if_exists = 'replace', index = False)
+	else:
+		pass
+
 	return output
 
 def todays_matches(gamedate):

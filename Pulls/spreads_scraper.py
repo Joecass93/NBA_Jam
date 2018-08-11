@@ -8,14 +8,15 @@ import time
 from utilities.config import spread_teams
 #from config import spread_teams
 
-## gameday should be str of format 'YYYYMMDD'
+## gameday should be str of format 'YYYY-MM-DD'
 def main(gameday = None):
 	## User enters start date of range
 	if gameday:
+		gameday = datetime.datetime.strptime(gameday, '%Y-%m-%d')
+		gameday = gameday.strftime('%Y%m%d')
+		gameday = datetime.datetime.strptime(gameday, '%Y%m%d')
 		start_date = gameday
 		end_date = gameday
-		start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
-		end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
 	else:
 		try:
 			start_date = raw_input("Select a start date for the scraper (leave blank to get today's spreads): ")
