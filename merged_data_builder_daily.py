@@ -50,15 +50,7 @@ adapter = requests.adapters.HTTPAdapter(max_retries=10)
 sess.mount('http://', adapter)
 
 ## Argument Parser
-parser = ArgumentParser()
-parser.add_argument("-d", "--game_date", help="date to start pulling final scores data from: ex. '2017-11-01'", type=str, required=False)
 
-flags = parser.parse_args()
-
-if flags.game_date:
-	gamedate = flags.game_date
-else:
-	gamedate = datetime.date.today().strftime('%Y-%m-%d')
 
 ## remove when done testing
 #gamedate = '2017-11-01'
@@ -67,7 +59,12 @@ else:
 home_dir = expanduser("~")
 
 ## Main function
-def main(gamedate = gamedate):
+def main(gamedate = None):
+
+	if gamedate:
+		pass
+	else:
+		gamedate = '2017-11-01'
 
 	print "getting matchups for %s..."%gamedate
 	matches = todays_matches(gamedate)
@@ -107,7 +104,7 @@ def main(gamedate = gamedate):
 def todays_matches(gamedate):
 	gamedate = datetime.datetime.strptime(gamedate, '%Y-%m-%d')
 	gamedate= gamedate.strftime('%m/%d/%Y')
-	gamedate = '11/01/2017' ## Remove when done testing
+	#gamedate = '11/01/2017' ## Remove when done testing
 	try:
 		scoreboard_url = 'http://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%gamedate
 		response = requests.get(scoreboard_url, headers=request_header)

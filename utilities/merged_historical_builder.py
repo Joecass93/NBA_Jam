@@ -16,20 +16,27 @@ parser.add_argument("-e", "--end_date", help = "date to end pulling final scores
 flags = parser.parse_args()
 
 if flags.start_date:
-	sdate = flags.start_date
+    sdate = flags.start_date
 else:
-	sdate = datetime.date.today().strftime('%Y-%m-%d')
+    sdate = datetime.date.today().strftime('%Y-%m-%d')
 if flags.end_date:
     edate = flags.end_date
 else:
-    edate = datetime.date.today().strftime('%Y-%m-%d')
+    edate = sdate
 
 def main():
     date_range = range_all_dates(sdate, edate)
-    for d in date_range:
+    for i, d in enumerate(date_range):
         d_games = mdb.main(d)
+        if i == 0:
+            full_results = d_games
+        else:
+            full_results = full_results.append(d_games)
 
-    return None
+    full_results.to_csv('%s/projects/NBA_JAM/Data/historical_picks.csv'%home_dir, sep = ',')
+    print full_results
+
+    return full_results
 
 if __name__ == '__main__':
     main()
