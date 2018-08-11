@@ -15,7 +15,7 @@ adapter = requests.adapters.HTTPAdapter(max_retries=10)
 sess.mount('http://', adapter)
 
 ## remove when done testing
-#gamedate = '2017-11-01'
+gamedate = '2017-11-01'
 
 ##
 home_dir = expanduser("~")
