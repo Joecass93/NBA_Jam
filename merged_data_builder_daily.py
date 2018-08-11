@@ -42,24 +42,32 @@ from utilities.config import teams, spread_teams, request_header
 from utilities.assets import list_games
 from pulls import spreads_scraper
 from os.path import expanduser
+from argparse import ArgumentParser
 
 ## API error handling
 sess = requests.Session()
 adapter = requests.adapters.HTTPAdapter(max_retries=10)
 sess.mount('http://', adapter)
 
+## Argument Parser
+parser = ArgumentParser()
+parser.add_argument("-d", "--game_date", help="date to start pulling final scores data from: ex. '2017-11-01'", type=str, required=False)
+
+flags = parser.parse_args()
+
+if flags.game_date:
+	gamedate = flags.game_date
+else:
+	gamedate = datetime.date.today().strftime('%Y-%m-%d')
+
 ## remove when done testing
-gamedate = '2017-11-01'
+#gamedate = '2017-11-01'
 
 ##
 home_dir = expanduser("~")
 
-def main(gamedate = None):
-
-	if gamedate:
-		pass
-	else:
-		gamedate = datetime.date.today().strftime('%Y-%m-%d')
+## Main function
+def main(gamedate = gamedate):
 
 	print "getting matchups for %s..."%gamedate
 	matches = todays_matches(gamedate)
