@@ -62,7 +62,7 @@ def main(gamedate = None):
 	if gamedate:
 		pass
 	else:
-		gamedate = '2017-11-01'
+		gamedate = '2017-10-20'
 
 	print "getting matchups for %s..."%gamedate
 	matches = todays_matches(gamedate)
@@ -73,7 +73,9 @@ def main(gamedate = None):
 		home = matches.HOME_TEAM_ID.astype(str)[i]
 		print "getting %s: %s @ %s"%(g, away, home)
 		away_ff_cum = get_cumulative_ff(away, gamedate, '2017-18', 'away', i)
+		away_ff_cum.insert(0, 'game_id', away)
 		home_ff_cum = get_cumulative_ff(home, gamedate, '2017-18', 'home', i)
+		home_ff_cum.insert(0, 'game_id', home)
 		if i == 0:
 			todays_ff_cum = away_ff_cum
 			todays_ff_cum = todays_ff_cum.append(home_ff_cum)
@@ -82,7 +84,7 @@ def main(gamedate = None):
 			todays_ff_cum = todays_ff_cum.append(home_ff_cum)
 
 	print "formatting stats..."
-	daily_preds = format_and_run_daily_stats(todays_ff_cum)
+	daily_preds = format_daily_stats(todays_ff_cum)
 
 	print "getting todays spreads..."
 	daily_vegas = spreads_scraper.main(gamedate)
@@ -93,8 +95,11 @@ def main(gamedate = None):
 	print "making predictions..."
 	output = clean_predictions(merged_data)
 
+	## Add gamedate as first column of DataFrame
+	output.insert(0, 'game_date', datetime.datetime.strptime(gamedate, '%Y-%m-%d').date())
+
 	## if daily run then write dataframe to daily_picks sql table
-	if gamedate == '2017-11-01':
+	if gamedate == '2017-10-20':
 		print "writing predictions to daily picks sql table..."
 		daily_engine = establish_db_connection('sqlalchemy')
 		daily_conn = daily_engine.connect()
@@ -140,7 +145,6 @@ def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
     games_str = ",".join(games_played)
     season = season_sql[season]
     r_stats = pd.read_sql("SELECT * FROM four_factors_table WHERE TEAM_ID = " + team_id + " AND FIND_IN_SET(GAME_ID,'" + games_str + "') > 0;", con = conn)
-
     trunc_cols = list(r_stats)[6:]
     trunc_cols.insert(0, 'TEAM_ID')
     trunc_cols.insert(1, 'SIDE')
@@ -156,9 +160,10 @@ def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
 
     return team_stats
 
-def format_and_run_daily_stats(dirty_stats):
+def format_daily_stats(dirty_stats):
 	unq_sequence = dirty_stats.SEQUENCE.unique()
-	preds_cols = ['home_id', 'away_id', 'pred_spread']
+	preds_cols = ['game_id', 'home_id', 'away_id', 'pred_spread']
+
 	for i in unq_sequence:
 		match = dirty_stats[dirty_stats['SEQUENCE'] == i]
 
@@ -186,6 +191,7 @@ def run_daily_algo(match):
 	i = 0
 	for s in ['away', 'home']:
 		side = match[match['SIDE'] == s]
+		game_id = side['game_id'].item()
 		efg = (side['EFG_PCT'].item() - side['OPP_EFG_PCT'].item())*100
 		tov = (side['TM_TOV_PCT'].item() - side['OPP_TOV_PCT'].item())*100
 	 	orb = (100*side['OREB_PCT'].item()) - (100*side['OPP_OREB_PCT'].item())
@@ -209,7 +215,7 @@ def run_daily_algo(match):
 	pred_spread  = ((efg + tov + orb + ftfga)*2)-2.47
 
 	pred_spread = str(pred_spread)
-	pred_final = [home['TEAM_ID'].item(), away['TEAM_ID'].item(), pred_spread]
+	pred_final = [home['game_id'].item(), home['TEAM_ID'].item(), away['TEAM_ID'].item(), pred_spread]
 
 	return pred_final
 
@@ -220,6 +226,8 @@ def merged_daily_data(daily_preds, daily_vegas):
 
 
 	daily_final['vegas_spread'] = daily_final['bovada_line'].str.replace("+","")
+	## Fix error that occurs from PK-11
+	daily_final = daily_final.replace({'PK-11':'0'})
 	daily_final['vegas_spread'] = pd.to_numeric(daily_final['vegas_spread'])
 	daily_final = daily_final.drop(columns = ['home_team_id', 'away_team_id', 'bovada_line'])
 
@@ -263,7 +271,9 @@ def clean_predictions(daily_final):
                                     clean['home_team'] + " (" + clean['pred_spread'].apply(str) + ")")
     ## Rearrange columns
     clean_cols = clean.columns.tolist()
-    final_cols = clean_cols[:2] + clean_cols[-1:] + clean_cols[3:-1] + clean_cols[2:3]
+    print clean_cols
+    final_cols = clean_cols[:3] + clean_cols[-1:] + clean_cols[4:-1] + clean_cols[3:4]
+    print final_cols
     final = clean[final_cols]
 
     return final

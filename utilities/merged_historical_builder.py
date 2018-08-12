@@ -1,10 +1,35 @@
+"""
+MERGED HISTORICAL BUILDER
+
+DESCRIPTION:
+This script allows the user to enter start and end dates, and return a predictions dataframe for all dates
+within the given range.
+
+IMPORTED BY:
+
+IMPORT(S): merged_data_builder_daily.main(), db_connection_manager.establish_db_connection
+
+INPUT(S):
+Date in string format - 'YYYY-MM-DD'
+
+OUTPUT(S):
+Dataframe containing each game for the date range selected with the following metrics:
+vegas spread, predicted spread, differential between predicted and actual spread, and ranking
+for each game
+
+FUNCTION(S):
+
+CREATED/REFACTORED BY: Joe Cassidy / 08.12.2018
+
+"""
+
 import pandas as pd
-import sys
-from os.path import expanduser
 from argparse import ArgumentParser
 from assets import range_all_dates
 import datetime
 from db_connection_manager import establish_db_connection
+import sys
+from os.path import expanduser
 home_dir = expanduser('~')
 syspath = '%s/projects/NBA_Jam/'%home_dir
 sys.path.insert(0,syspath)
@@ -28,21 +53,36 @@ else:
 
 def main():
     date_range = range_all_dates(sdate, edate)
+    sql_table = 'historical_picks_table'
     for i, d in enumerate(date_range):
         d_games = mdb.main(d)
-        if i == 0:
-            full_results = d_games
-        else:
-            full_results = full_results.append(d_games)
+        engine = establish_db_connection('sqlalchemy')
+        conn = engine.connect()
+        try:
+            print "writing predictions for %s to %s"%(d, sql_table)
+            d_games.to_sql(name = sql_table, con = conn, if_exists = 'append', index = False)
+            print "predictions successfully written to db at %s"%datetime.datetime.now()
+        except Exception as e:
+            print "db write failed because: %s"%e
 
-    full_results.to_csv('%s/projects/NBA_JAM/Data/historical_picks.csv'%home_dir, sep = ',')
-    print full_results
+    #     if i == 0:
+    #         print "predictions made for %s"%d
+    #         full_results = d_games
+    #     else:
+    #         print "predictions made for %s"%d
+    #         full_results = full_results.append(d_games)
+    #
+    # print "writing data to historical_picks_table in db..."
+    #
+    # engine = establish_db_connection('sqlalchemy')
+    # conn = engine.connect()
+    # try:
+    #     full_results.to_sql(name = 'historical_picks_table', con = conn, if_exists = 'append', index = False)
+    #     print "successfully wrote picks to historical_picks_table at %s"%datetime.datetime.now()
+    # except Exception as e:
+    #     print "db write failed because: %s"%e
 
-    engine = establish_db_connection('sqlalchemy')
-    conn = engine.connect()
-    full_results.to_sql(name = 'historical_picks', con = conn, if_exists = 'append', index = False)
-
-    return full_results
+    return None
 
 if __name__ == '__main__':
     main()

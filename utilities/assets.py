@@ -23,7 +23,7 @@ def range_all_dates(start_date, end_date):
 		date_range_list.append(d)
 	return date_range_list
 
-## Get list of game_ids for each game played by a team up to a specified point in seasons
+## Get list of game_ids for each game played by a team up to a specified point in seasons (not including the defined date)
 # Enter date as string YYYY-MM-DD
 def list_games(team_id, date):
 	## Transform date from string
@@ -40,7 +40,7 @@ def list_games(team_id, date):
 	data = data[data['GAME_DATE_EST'] >= tdate]
 
 	## Limit data based on specified date
-	trunc_data = data[data['GAME_DATE_EST'] <= clean_date]
+	trunc_data = data[data['GAME_DATE_EST'] < clean_date]
 
 	## Limit data to just the selected team
 	trunc_data['TEAM_ID'] = trunc_data.TEAM_ID.astype(str)
