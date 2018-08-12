@@ -236,46 +236,49 @@ def merged_daily_data(daily_preds, daily_vegas):
 def clean_predictions(daily_final):
 
 	## get team names
-	# get dataframe of team_ids and abbrevations
-	team_cities = pd.DataFrame.from_dict(teams['nba_teams'],
-										orient = 'index',
-										dtype = 'object',
-										columns = ['team'])
-	team_cities['team_id'] = team_cities.index
 	# merge away teams first
-	daily_final = pd.merge(daily_final, team_cities, left_on = 'away_id', right_on = 'team_id', how = 'left')
-	daily_final['away_team'] = daily_final['team']
-	daily_final = daily_final.drop(columns = ['team_id', 'team'])
+    daily_final['away_team'] = daily_final['away_id'].map(teams['nba_teams'])
 
 	# now merge home teams
-	daily_final = pd.merge(daily_final, team_cities, left_on = 'home_id', right_on = 'team_id', how = 'left')
-	daily_final['home_team'] = daily_final['team']
-	daily_final = daily_final.drop(columns = ['team_id', 'team'])
+    daily_final['home_team'] = daily_final['home_id'].map(teams['nba_teams'])
 
 	## get differential
-	daily_final['pt_diff'] = daily_final['vegas_spread'] - daily_final['pred_spread']
+    daily_final['pt_diff'] = daily_final['vegas_spread'] - daily_final['pred_spread']
+
 
 	## rank games based on score
-	daily_final['abs_pt_diff'] = daily_final['pt_diff'].abs()
-	daily_final = daily_final.sort_values(by = ['abs_pt_diff'], ascending = False)
-	daily_final['rank'] = daily_final['abs_pt_diff'].rank(ascending = False)
-	daily_final = daily_final.drop(columns = ['abs_pt_diff'])
+    daily_final['abs_pt_diff'] = daily_final['pt_diff'].abs()
+    daily_final = daily_final.sort_values(by = ['abs_pt_diff'], ascending = False)
+    daily_final['rank'] = daily_final['abs_pt_diff'].rank(ascending = False)
 
 	## get pick
-	daily_final['pick'] = np.where(daily_final['vegas_spread'] < daily_final['pred_spread'], daily_final['home_team'], daily_final['away_team'])
+    daily_final['pick'] = np.where(daily_final['vegas_spread'] < daily_final['pred_spread'], daily_final['home_team'], daily_final['away_team'])
 
-	daily_final['pick_away'] = np.where(daily_final['pt_diff'] > 0, daily_final['vegas_spread'], "")
-	daily_final['pick_away'] = np.where(daily_final['vegas_spread'] < 0, daily_final['pick_away'], "+" + daily_final['pick_away'].apply(str))
-	daily_final['pick_home'] = np.where((daily_final['pt_diff'] < 0) & (daily_final['vegas_spread'] < 0),
+    daily_final['pick_away'] = np.where(daily_final['pt_diff'] > 0, daily_final['vegas_spread'], "")
+    daily_final['pick_away'] = np.where(daily_final['vegas_spread'] < 0, daily_final['pick_away'], "+" + daily_final['pick_away'].apply(str))
+    daily_final['pick_home'] = np.where((daily_final['pt_diff'] < 0) & (daily_final['vegas_spread'] < 0),
 										daily_final['vegas_spread'].apply(str), "")
-	daily_final['pick_home'] = np.where(daily_final['pick_home'] == "", '-' + daily_final['vegas_spread'].apply(str), daily_final['pick_home'].str.replace('-', '+'))
+    daily_final['pick_home'] = np.where(daily_final['pick_home'] == "", '-' + daily_final['vegas_spread'].apply(str), daily_final['pick_home'].str.replace('-', '+'))
 
-	daily_final['pick_str'] = np.where(daily_final['pt_diff'] > 0, daily_final['pick'] + " " + daily_final['pick_away'],
-									   daily_final['pick'] + " " + daily_final['pick_home'])
+    daily_final['pick_str'] = np.where(daily_final['pt_diff'] > 0, daily_final['pick'] + " (" + daily_final['pick_away'] + ")",
+									   daily_final['pick'] + " (" + daily_final['pick_home'] + ")")
 
-	clean = daily_final.drop(columns = ['pick', 'pick_away', 'pick_home'])
+    daily_final['vegas_spread'] = np.where(daily_final['vegas_spread'] < 0, daily_final['away_team'] + " (" + daily_final['vegas_spread'].apply(str) + ")",
+                                            daily_final['home_team'] + " (-" + daily_final['vegas_spread'].apply(str) + ")")
 
-	return clean
+	## Some cleaning real quick
+    clean = daily_final.drop(columns = ['pick', 'pick_away', 'pick_home', 'abs_pt_diff'])
+    clean = clean.round({'pt_diff': 2, 'pred_spread': 2})
+
+    ## Get prediction as string
+    clean['pred_spread_str'] = np.where(clean['pred_spread'] < 0, clean['away_team'] + " (" + clean['pred_spread'].apply(str) + ")",
+                                    clean['home_team'] + " (" + clean['pred_spread'].apply(str) + ")")
+    ## Rearrange columns
+    clean_cols = clean.columns.tolist()
+    final_cols = clean_cols[:2] + clean_cols[-1:] + clean_cols[3:-1] + clean_cols[2:3]
+    final = clean[final_cols]
+
+    return final
 
 
 if __name__ == '__main__':
