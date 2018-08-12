@@ -22,13 +22,13 @@ for each game
 FUNCTION(S):
 -- todays_matches(gamedate) -> sends pull request to nba api and returns a dataframe containing information
 about games for a given date
--- cum_ff_stats(away_id, home_id, gamedate, sequence) ->
+-- get_cumulative_ff(team_id, gamedate, season, side, sequence) ->
 -- format_and_run_daily_stats(dirty_stats) ->
 -- run_daily_algo(match) ->
 -- merged_daily_data(daily_preds, daily_vegas) ->
 -- clean_predictions(daily_final) ->
 
-CREATED/REFACTORED BY: Joe Cassidy / 08.11.2018
+CREATED/REFACTORED BY: Joe Cassidy / 08.12.2018
 
 """
 
@@ -37,7 +37,6 @@ import numpy as np
 import datetime
 import requests
 import json
-import time
 from utilities.config import teams, spread_teams, request_header, season_sql
 from utilities.assets import list_games
 from utilities.db_connection_manager import establish_db_connection
@@ -50,7 +49,7 @@ sess = requests.Session()
 adapter = requests.adapters.HTTPAdapter(max_retries=10)
 sess.mount('http://', adapter)
 
-##
+## Establish home directory
 home_dir = expanduser("~")
 
 ## Establish db Connection
@@ -82,8 +81,6 @@ def main(gamedate = None):
 			todays_ff_cum = todays_ff_cum.append(away_ff_cum)
 			todays_ff_cum = todays_ff_cum.append(home_ff_cum)
 
-	todays_ff_cum.to_csv("dirty_stats_test.csv", sep=',')
-
 	print "formatting stats..."
 	daily_preds = format_and_run_daily_stats(todays_ff_cum)
 
@@ -95,8 +92,6 @@ def main(gamedate = None):
 
 	print "making predictions..."
 	output = clean_predictions(merged_data)
-
-	output.to_csv('%s/projects/NBA_Jam/test_daily.csv'%home_dir, sep = ',')
 
 	## if daily run then write dataframe to daily_picks sql table
 	if gamedate == '2017-11-01':
@@ -112,9 +107,9 @@ def main(gamedate = None):
 	return output
 
 def todays_matches(gamedate):
+	# Reformat gamedate to conform with api endpoint
 	gamedate = datetime.datetime.strptime(gamedate, '%Y-%m-%d')
 	gamedate= gamedate.strftime('%m/%d/%Y')
-	#gamedate = '11/01/2017' ## Remove when done testing
 	try:
 		scoreboard_url = 'http://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%gamedate
 		response = requests.get(scoreboard_url, headers=request_header)
@@ -128,17 +123,14 @@ def todays_matches(gamedate):
 	# Check how many games there are today
 	scoreboard_len = len(cleaner['rowSet'])
 
-	x = 0
-	games_today = []
 	# Loop through and get each game's info
+	games_today = []
 	for x in range(0,scoreboard_len):
 		game_info = cleaner['rowSet'][x]
 		games_today.append(game_info)
-		x = x + 1
 
 	# Create dataframe containing info about today's game
 	df_matches = pd.DataFrame(games_today, columns = col_names)
-
 
 	return df_matches
 
@@ -209,7 +201,7 @@ def run_daily_algo(match):
 			math_df = math_df.append(temp_math_df)
 		i += 1
 	math_df.reset_index()
-	print math_df
+
 	efg = ((math_df[math_df['side'] == 'away'])['efg'].item() - (math_df[math_df['side'] == 'home'])['efg'].item())*0.4
 	tov = ((math_df[math_df['side'] == 'away'])['tov'].item() - (math_df[math_df['side'] == 'home'])['tov'].item())*0.25
 	orb = ((math_df[math_df['side'] == 'away'])['orb'].item() - (math_df[math_df['side'] == 'home'])['orb'].item())*0.2
@@ -236,15 +228,11 @@ def merged_daily_data(daily_preds, daily_vegas):
 def clean_predictions(daily_final):
 
 	## get team names
-	# merge away teams first
     daily_final['away_team'] = daily_final['away_id'].map(teams['nba_teams'])
-
-	# now merge home teams
     daily_final['home_team'] = daily_final['home_id'].map(teams['nba_teams'])
 
 	## get differential
     daily_final['pt_diff'] = daily_final['vegas_spread'] - daily_final['pred_spread']
-
 
 	## rank games based on score
     daily_final['abs_pt_diff'] = daily_final['pt_diff'].abs()
