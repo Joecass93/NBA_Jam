@@ -50,12 +50,6 @@ sess = requests.Session()
 adapter = requests.adapters.HTTPAdapter(max_retries=10)
 sess.mount('http://', adapter)
 
-## Argument Parser
-
-
-## remove when done testing
-#gamedate = '2017-11-01'
-
 ##
 home_dir = expanduser("~")
 
@@ -164,7 +158,8 @@ def cum_ff_stats(away_id, home_id, gamedate, sequence):
 			col_names = cleanest['headers']
 			away_data = cleanest['rowSet']
 
-			if away_id in away_data[0]:
+			away_id_int = int(away_id)
+			if away_id_int in away_data[0]:
 				away_data_daily = away_data[0]
 			else:
 				away_data_daily = away_data[1]
@@ -186,7 +181,8 @@ def cum_ff_stats(away_id, home_id, gamedate, sequence):
 			col_names = cleanest['headers']
 			home_data = cleanest['rowSet']
 
-			if home_id in home_data[0]:
+			home_id_int = int(home_id)
+			if home_id_int in home_data[0]:
 				home_data_daily = home_data[0]
 			else:
 				home_data_daily = home_data[1]
