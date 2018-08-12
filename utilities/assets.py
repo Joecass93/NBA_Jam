@@ -1,6 +1,7 @@
 from datetime import date, timedelta, datetime
 import pandas as pd
 from os.path import expanduser
+from db_connection_manager import establish_db_connection
 
 home = expanduser("~")
 
@@ -23,19 +24,19 @@ def range_all_dates(start_date, end_date):
 	return date_range_list
 
 ## Get list of game_ids for each game played by a team up to a specified point in seasons
+# Enter date as string YYYY-MM-DD
 def list_games(team_id, date):
-	## Transform date
-	xdate = "%sT00:00:00"%date
-	clean_date = datetime.strptime(xdate, '%Y-%m-%dT%H:%M:%S')
+	## Transform date from string
+	clean_date = datetime.strptime(date, '%Y-%m-%d').date()
 
-	## Navigate to table containing the correct season's full box score dataset
-	# Replace this with database connection eventually.....
-	data = pd.read_csv(("%s/projects/NBA_Jam/Data/FinalScores2010-2018.csv")%home, sep =',')
+	# Get games from db
+	engine = establish_db_connection('sqlalchemy')
+	conn = engine.connect()
+	data = pd.read_sql("SELECT * FROM final_scores", con = conn)
 
-	## Comment these section out once database integration takes place
-	data['GAME_DATE_EST'] = pd.to_datetime(data['GAME_DATE_EST'])
-	tdate = "2017-10-17T00:00:00"
-	clean_tdate = datetime.strptime(tdate, '%Y-%m-%dT%H:%M:%S')
+	## Replace this with some intelligent method of knowing the start date of the season in which the user-inputed date exists
+	tdate = '2017-10-17'
+	tdate = datetime.strptime(tdate, '%Y-%m-%d').date()
 	data = data[data['GAME_DATE_EST'] >= tdate]
 
 	## Limit data based on specified date
@@ -45,7 +46,7 @@ def list_games(team_id, date):
 	trunc_data['TEAM_ID'] = trunc_data.TEAM_ID.astype(str)
 	team_data = trunc_data[trunc_data['TEAM_ID'] == team_id]
 
-	games_list = ["00" + str(x) for x in team_data['GAME_ID']]
+	games_list = team_data['GAME_ID'].tolist()
 
 	return games_list
 
