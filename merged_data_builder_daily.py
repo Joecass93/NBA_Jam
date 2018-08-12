@@ -66,6 +66,10 @@ def main(gamedate = None):
 
 	print "getting matchups for %s..."%gamedate
 	matches = todays_matches(gamedate)
+	if len(matches) > 0:
+		pass
+	else:
+		return None
 
 	print "getting stats for each team..."
 	for i, g in enumerate(matches['GAME_ID']):
@@ -73,9 +77,9 @@ def main(gamedate = None):
 		home = matches.HOME_TEAM_ID.astype(str)[i]
 		print "getting %s: %s @ %s"%(g, away, home)
 		away_ff_cum = get_cumulative_ff(away, gamedate, '2017-18', 'away', i)
-		away_ff_cum.insert(0, 'game_id', away)
+		away_ff_cum.insert(0, 'game_id', g)
 		home_ff_cum = get_cumulative_ff(home, gamedate, '2017-18', 'home', i)
-		home_ff_cum.insert(0, 'game_id', home)
+		home_ff_cum.insert(0, 'game_id', g)
 		if i == 0:
 			todays_ff_cum = away_ff_cum
 			todays_ff_cum = todays_ff_cum.append(home_ff_cum)
@@ -227,7 +231,7 @@ def merged_daily_data(daily_preds, daily_vegas):
 
 	daily_final['vegas_spread'] = daily_final['bovada_line'].str.replace("+","")
 	## Fix error that occurs from PK-11
-	daily_final = daily_final.replace({'PK-11':'0'})
+	daily_final = daily_final.replace({'PK-11':'0', 'PK-10':'0'})
 	daily_final['vegas_spread'] = pd.to_numeric(daily_final['vegas_spread'])
 	daily_final = daily_final.drop(columns = ['home_team_id', 'away_team_id', 'bovada_line'])
 
@@ -271,9 +275,7 @@ def clean_predictions(daily_final):
                                     clean['home_team'] + " (" + clean['pred_spread'].apply(str) + ")")
     ## Rearrange columns
     clean_cols = clean.columns.tolist()
-    print clean_cols
     final_cols = clean_cols[:3] + clean_cols[-1:] + clean_cols[4:-1] + clean_cols[3:4]
-    print final_cols
     final = clean[final_cols]
 
     return final
