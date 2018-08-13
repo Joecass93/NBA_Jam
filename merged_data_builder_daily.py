@@ -75,7 +75,7 @@ def main(gamedate = None):
 	for i, g in enumerate(matches['GAME_ID']):
 		away = matches.VISITOR_TEAM_ID.astype(str)[i]
 		home = matches.HOME_TEAM_ID.astype(str)[i]
-		print "getting %s: %s @ %s"%(g, away, home)
+		print "getting %s: %s @ %s"%(g, teams['nba_teams'].get(away), teams['nba_teams'].get(home))
 		away_ff_cum = get_cumulative_ff(away, gamedate, '2017-18', 'away', i)
 		away_ff_cum.insert(0, 'game_id', g)
 		home_ff_cum = get_cumulative_ff(home, gamedate, '2017-18', 'home', i)
@@ -263,7 +263,7 @@ def clean_predictions(daily_final):
     daily_final['pick_str'] = np.where(daily_final['pt_diff'] > 0, daily_final['pick'] + " (" + daily_final['pick_away'] + ")",
 									   daily_final['pick'] + " (" + daily_final['pick_home'] + ")")
 
-    daily_final['vegas_spread'] = np.where(daily_final['vegas_spread'] < 0, daily_final['away_team'] + " (" + daily_final['vegas_spread'].apply(str) + ")",
+    daily_final['vegas_spread_str'] = np.where(daily_final['vegas_spread'] < 0, daily_final['away_team'] + " (" + daily_final['vegas_spread'].apply(str) + ")",
                                             daily_final['home_team'] + " (-" + daily_final['vegas_spread'].apply(str) + ")")
 
 	## Some cleaning real quick
@@ -275,7 +275,9 @@ def clean_predictions(daily_final):
                                     clean['home_team'] + " (" + clean['pred_spread'].apply(str) + ")")
     ## Rearrange columns
     clean_cols = clean.columns.tolist()
-    final_cols = clean_cols[:3] + clean_cols[-1:] + clean_cols[4:-1] + clean_cols[3:4]
+
+    final_cols = clean_cols[:3] + clean_cols[-2:] + clean_cols[5:-2] + clean_cols[3:5]
+
     final = clean[final_cols]
 
     return final

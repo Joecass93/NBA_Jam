@@ -65,23 +65,6 @@ def main():
         except Exception as e:
             print "db write failed because: %s"%e
 
-    #     if i == 0:
-    #         print "predictions made for %s"%d
-    #         full_results = d_games
-    #     else:
-    #         print "predictions made for %s"%d
-    #         full_results = full_results.append(d_games)
-    #
-    # print "writing data to historical_picks_table in db..."
-    #
-    # engine = establish_db_connection('sqlalchemy')
-    # conn = engine.connect()
-    # try:
-    #     full_results.to_sql(name = 'historical_picks_table', con = conn, if_exists = 'append', index = False)
-    #     print "successfully wrote picks to historical_picks_table at %s"%datetime.datetime.now()
-    # except Exception as e:
-    #     print "db write failed because: %s"%e
-
     return None
 
 if __name__ == '__main__':
