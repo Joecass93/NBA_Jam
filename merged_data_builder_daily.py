@@ -108,6 +108,11 @@ def main(gamedate = None):
 		daily_engine = establish_db_connection('sqlalchemy')
 		daily_conn = daily_engine.connect()
 		output.to_sql(name = 'daily_picks', con = daily_conn, if_exists = 'replace', index = False)
+		## also append it to the historical dataframe
+		try:
+			output.to_sql(name = 'historical_picks_table', con = daily_conn, if_exists = 'append', index = False)
+		else Exception as e:
+			print "write to historical_picks_table failed because: %s"%e
 	else:
 		pass
 
