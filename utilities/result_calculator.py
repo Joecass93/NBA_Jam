@@ -54,6 +54,7 @@ def determine_results(game_scores, game_picks):
         # get pick data for game
         g_pick = game_picks[game_picks['game_id'] == g]
 
+        g_date = g_score['game_date'].item()
         away_spread = g_pick['vegas_spread'].item()
         pred_spread = g_pick['pred_spread'].item()
         diff_pred_spread = g_pick['pt_diff'].item()
@@ -64,6 +65,7 @@ def determine_results(game_scores, game_picks):
         home_points = g_score['pts_home'].item()
         pick = g_pick['pick_str'].item()
         vegas_spread = g_pick['vegas_spread_str'].item()
+        best_bet = g_pick['best_bet'].item()
 
         if diff_pred_spread < 0:
             if away_spread > 0:
@@ -113,8 +115,8 @@ def determine_results(game_scores, game_picks):
                     print 'away_spread: %s, away_pred: %s, diff_pred_spread: %s, actual_diff: %s'%(away_spread, pred_spread, diff_pred_spread, pt_diff_away)
                     r = 'win'
 
-        results_cols = ['game_id', 'away_team', 'away_score', 'home_team', 'home_points', 'spread', 'pick', 'result', 'result_vs_spread']
-        results_list = [g, away_team, away_points, home_team, home_points, vegas_spread, pick, r, 0]
+        results_cols = ['game_date', 'game_id', 'away_team', 'away_score', 'home_team', 'home_points', 'spread', 'pick', 'result', 'result_vs_spread', 'best_bet']
+        results_list = [g_date, g, away_team, away_points, home_team, home_points, vegas_spread, pick, r, 0, best_bet]
         if i == 0:
             results_final = pd.DataFrame(data = [results_list], columns = results_cols)
         else:

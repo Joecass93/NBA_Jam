@@ -99,6 +99,9 @@ def main(gamedate = None):
 	print "making predictions..."
 	output = clean_predictions(merged_data)
 
+	print "determining best bets..."
+	output = best_bet_machine(output)
+
 	## Add gamedate as first column of DataFrame
 	output.insert(0, 'game_date', datetime.datetime.strptime(gamedate, '%Y-%m-%d').date())
 
@@ -287,6 +290,10 @@ def clean_predictions(daily_final):
 
     return final
 
+def best_bet_machine(game_predictions):
+	game_predictions['best_bet'] = np.where(abs(game_predictions['pt_diff']) >= 5, 'Y', 'N')
+
+	return game_predictions
 
 if __name__ == '__main__':
 	main()
