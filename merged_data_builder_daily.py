@@ -111,7 +111,7 @@ def main(gamedate = None):
 		## also append it to the historical dataframe
 		try:
 			output.to_sql(name = 'historical_picks_table', con = daily_conn, if_exists = 'append', index = False)
-		else Exception as e:
+		except Exception as e:
 			print "write to historical_picks_table failed because: %s"%e
 	else:
 		pass
