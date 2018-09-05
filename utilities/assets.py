@@ -2,6 +2,7 @@ from datetime import date, timedelta, datetime
 import pandas as pd
 from os.path import expanduser
 from db_connection_manager import establish_db_connection
+from config import seasons
 
 home = expanduser("~")
 
@@ -49,6 +50,34 @@ def list_games(team_id, date):
 	games_list = team_data['GAME_ID'].tolist()
 
 	return games_list
+
+def season_from_date_str(gamedate):
+
+	gamedate = datetime.strptime(gamedate, "%Y-%m-%d").date()
+
+	seasons_list = ['2000-01', '2001-02', '2002-03', '2003-04', '2004-05', '2005-06', '2006-07',
+					'2007-08', '2009-10', '2010-11', '2011-12', '2012-13', '2013-14', '2014-15',
+					'2015-16', '2016-17', '2017-18', '2018-19']
+
+	season_start = seasons['start_date']
+	season_end = seasons['end_date']
+
+	#inv_season_start = {v: k for k, v in seasons['start_date'].iteritems()}
+	#inv_season_end = {v: k for k, v in seasons['end_date'].iteritems()}
+
+	for ding in seasons_list:
+
+		ding_start = season_start.get(ding)
+		ding_start = datetime.strptime(ding_start, "%Y-%m-%d").date()
+		ding_end = season_end.get(ding)
+		ding_end = datetime.strptime(ding_end, "%Y-%m-%d").date()
+
+		if (gamedate >= ding_start) and (gamedate <= ding_end):
+			season = ding
+		else:
+			pass
+
+	return season
 
 if __name__ == "__main__":
 	main()

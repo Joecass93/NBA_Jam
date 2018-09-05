@@ -38,7 +38,7 @@ import datetime
 import requests
 import json
 from utilities.config import teams, spread_teams, request_header, season_sql
-from utilities.assets import list_games
+from utilities.assets import list_games, season_from_date_str
 from utilities.db_connection_manager import establish_db_connection
 from pulls import spreads_scraper
 from os.path import expanduser
@@ -64,6 +64,8 @@ def main(gamedate = None):
 	else:
 		gamedate = '2017-10-20'
 
+	curr_season = season_from_date_str(gamedate)
+
 	print "getting matchups for %s..."%gamedate
 	matches = todays_matches(gamedate)
 	if len(matches) > 0:
@@ -75,10 +77,10 @@ def main(gamedate = None):
 	for i, g in enumerate(matches['GAME_ID']):
 		away = matches.VISITOR_TEAM_ID.astype(str)[i]
 		home = matches.HOME_TEAM_ID.astype(str)[i]
-		print "getting %s: %s @ %s"%(g, teams['nba_teams'].get(away), teams['nba_teams'].get(home))
-		away_ff_cum = get_cumulative_ff(away, gamedate, '2017-18', 'away', i)
+		print "getting game #%s: %s @ %s"%(g, teams['nba_teams'].get(away), teams['nba_teams'].get(home))
+		away_ff_cum = get_cumulative_ff(away, gamedate, curr_season, 'away', i)
 		away_ff_cum.insert(0, 'game_id', g)
-		home_ff_cum = get_cumulative_ff(home, gamedate, '2017-18', 'home', i)
+		home_ff_cum = get_cumulative_ff(home, gamedate, curr_season, 'home', i)
 		home_ff_cum.insert(0, 'game_id', g)
 		if i == 0:
 			todays_ff_cum = away_ff_cum
@@ -153,6 +155,8 @@ def todays_matches(gamedate):
 
 ## Need to get four factors stats at current point in season
 def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
+    season =
+
     games_played = list_games(team_id, game_date)
     games_str = ",".join(games_played)
     season = season_sql[season]
