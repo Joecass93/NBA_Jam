@@ -28,7 +28,7 @@ about games for a given date
 -- merged_daily_data(daily_preds, daily_vegas) ->
 -- clean_predictions(daily_final) ->
 
-CREATED/REFACTORED BY: Joe Cassidy / 08.12.2018
+CREATED/REFACTORED BY: Joe Cassidy / 09.04.2018
 
 """
 
@@ -64,7 +64,7 @@ def main(gamedate = None):
 	else:
 		gamedate = '2017-10-20'
 
-	curr_season = season_from_date_str(gamedate)
+	gamedate_season = season_from_date_str(gamedate)
 
 	print "getting matchups for %s..."%gamedate
 	matches = todays_matches(gamedate)
@@ -77,10 +77,10 @@ def main(gamedate = None):
 	for i, g in enumerate(matches['GAME_ID']):
 		away = matches.VISITOR_TEAM_ID.astype(str)[i]
 		home = matches.HOME_TEAM_ID.astype(str)[i]
-		print "getting game #%s: %s @ %s"%(g, teams['nba_teams'].get(away), teams['nba_teams'].get(home))
-		away_ff_cum = get_cumulative_ff(away, gamedate, curr_season, 'away', i)
+		print "getting cumulative stats for: %s & %s"%(teams['nba_teams'].get(away), teams['nba_teams'].get(home))
+		away_ff_cum = get_cumulative_ff(away, gamedate, gamedate_season, 'away', i)
 		away_ff_cum.insert(0, 'game_id', g)
-		home_ff_cum = get_cumulative_ff(home, gamedate, curr_season, 'home', i)
+		home_ff_cum = get_cumulative_ff(home, gamedate, gamedate_season, 'home', i)
 		home_ff_cum.insert(0, 'game_id', g)
 		if i == 0:
 			todays_ff_cum = away_ff_cum
@@ -108,11 +108,12 @@ def main(gamedate = None):
 	output.insert(0, 'game_date', datetime.datetime.strptime(gamedate, '%Y-%m-%d').date())
 
 	## if daily run then write dataframe to daily_picks sql table
-	if gamedate == '2017-10-20':
+	if gamedate == datetime.datetime.now().date():
 		print "writing predictions to daily picks sql table..."
 		daily_engine = establish_db_connection('sqlalchemy')
 		daily_conn = daily_engine.connect()
 		output.to_sql(name = 'daily_picks', con = daily_conn, if_exists = 'replace', index = False)
+
 		## also append it to the historical dataframe
 		try:
 			output.to_sql(name = 'historical_picks_table', con = daily_conn, if_exists = 'append', index = False)
@@ -125,15 +126,15 @@ def main(gamedate = None):
 
 	return output
 
-def todays_matches(gamedate):
+def todays_matches(gamedate): ## Get dataframe containing basic information about NBA games that occurred or are occurring on a given date
+
 	# Reformat gamedate to conform with api endpoint
 	gamedate = datetime.datetime.strptime(gamedate, '%Y-%m-%d')
 	gamedate= gamedate.strftime('%m/%d/%Y')
 	try:
 		scoreboard_url = 'http://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%gamedate
 		response = requests.get(scoreboard_url, headers=request_header)
-		data = response.text
-		data = json.loads(data)
+		data = json.loads(response.text)
 		cleaner = data['resultSets'][0]
 		col_names = cleaner['headers']
 	except requests.ConnectionError as e:
@@ -155,7 +156,6 @@ def todays_matches(gamedate):
 
 ## Need to get four factors stats at current point in season
 def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
-    season =
 
     games_played = list_games(team_id, game_date)
     games_str = ",".join(games_played)

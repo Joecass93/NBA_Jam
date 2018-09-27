@@ -79,5 +79,8 @@ def season_from_date_str(gamedate):
 
 	return season
 
+def round_to_nearest(x, base):
+	return int(base * round(float(x)/base))
+
 if __name__ == "__main__":
 	main()
