@@ -51,7 +51,7 @@ def store_four_factors(team_data):
     engine = establish_db_connection('sqlalchemy')
     conn = engine.connect()
 
-    team_data.to_sql('four_factors_table', con = conn, if_exists = 'append', index = False)
+    team_data.to_sql('four_factors', con = conn, if_exists = 'append', index = False)
 
     return None
 

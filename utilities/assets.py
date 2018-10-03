@@ -1,8 +1,10 @@
 from datetime import date, timedelta, datetime
 import pandas as pd
+import json
 from os.path import expanduser
 from db_connection_manager import establish_db_connection
-from config import seasons
+from config import seasons, request_header
+import requests
 
 home = expanduser("~")
 
@@ -10,6 +12,40 @@ def main():
 	games = list_games('1610612738', '2017-11-01')
 	print games
 	return games
+
+## returns list of all game_ids for games occuring on a given date
+def games_daily(gamedate):
+
+	# Reformat gamedate to conform with api endpoint
+	gamedate = datetime.strptime(gamedate, '%Y-%m-%d')
+	gamedate= gamedate.strftime('%m/%d/%Y')
+
+	try:
+		scoreboard_url = 'https://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%gamedate
+		print scoreboard_url
+		response = requests.get(scoreboard_url, headers=request_header)
+		print response
+		data = json.loads(response.text)
+		cleaner = data['resultSets'][0]
+		col_names = cleaner['headers']
+	except requests.ConnectionError as e:
+		print e
+
+	# Check how many games there are today
+	scoreboard_len = len(cleaner['rowSet'])
+
+	# Loop through and get each game's info
+	games_today = []
+	for x in range(0,scoreboard_len):
+		game_info = cleaner['rowSet'][x]
+		games_today.append(game_info)
+
+	# Create dataframe containing info about today's game
+	df_matches = pd.DataFrame(games_today, columns = col_names)
+	list_games = list(df_matches['GAME_ID'])
+
+	return list_games
+
 
 ## Enter dates as string of format 'YYYY-MM-DD'
 def range_all_dates(start_date, end_date):
@@ -49,7 +85,16 @@ def list_games(team_id, date):
 
 	games_list = team_data['GAME_ID'].tolist()
 
-	return games_list
+	## Check if the selected team has a game today and return the id if they do
+
+	game_today = data[(data['GAME_DATE_EST'] == clean_date) & (data['TEAM_ID'] == int(team_id))]
+	
+	if len(game_today) > 0:
+		curr_game_id = game_today['GAME_ID'].item()
+	else:
+		curr_game_id = None
+
+	return games_list, curr_game_id
 
 def season_from_date_str(gamedate):
 

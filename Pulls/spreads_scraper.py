@@ -2,39 +2,41 @@ from urllib import urlopen
 from bs4 import BeautifulSoup
 import pandas as pd
 import requests
-import datetime
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import time
-from utilities.config import spread_teams
-#from config import spread_teams
+import sys
+from os.path import expanduser
+home_dir = expanduser("~")
+sys.path.insert(0, "%s/projects/NBA_Jam/utilities/"%home_dir)
+from config import spread_teams
+from db_connection_manager import establish_db_connection
+
 
 ## gameday should be str of format 'YYYY-MM-DD'
 def main(gameday = None):
 	## User enters start date of range
 	if gameday:
-		gameday = datetime.datetime.strptime(gameday, '%Y-%m-%d')
+		gameday = datetime.strptime(gameday, '%Y-%m-%d')
 		gameday = gameday.strftime('%Y%m%d')
-		gameday = datetime.datetime.strptime(gameday, '%Y%m%d')
+		gameday = datetime.strptime(gameday, '%Y%m%d')
 		start_date = gameday
 		end_date = gameday
 	else:
 		try:
-			start_date = raw_input("Select a start date for the scraper (leave blank to get today's spreads): ")
-			start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+			start_date = raw_input("Select a start date for the scraper ex. '2018-01-01'(leave blank to get today's spreads): ")
+			start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
 			end_date = raw_input("Select an end date for the scraper: ")
-			end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
-		except ValueError:
-			start_date = datetime.date.today()
-			start_date = start_date.strftime("%Y%m%d")
-			start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
+			end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+		except Exception as e:
+			print e
+			start_date = date.today()
 			end_date = start_date
-		start_date = start_date.date()
-		end_date = end_date.date()
 
 	print "getting spreads from %s to %s"%(start_date, end_date)
 
 	## Get all dates from user-defined range
 	date_range = range_all_dates(start_date, end_date)
+	print date_range
 
 	## Scrape all of the spread data from the date range
 	for i, d in enumerate(date_range):
@@ -45,8 +47,8 @@ def main(gameday = None):
 				spreads = games
 			else:
 				spreads = spreads.append(games)
-			spreads_final = format_spreads_data(spreads)
-		except:
+		except Exception as e:
+			print e
 			print "no games on %s"%d
 			empty_spreads = pd.DataFrame(columns = ['date','time','side',
                          'team','opp_team','pinnacle_line','pinnacle_odds',
@@ -60,7 +62,10 @@ def main(gameday = None):
 				spreads = empty_spreads
 			else:
 				spreads.append(empty_spreads)
-			spreads_final = spreads
+
+	spreads_final = format_spreads_data(spreads)
+	print spreads_final
+	save_spreads(spreads_final)
 
 	return spreads_final
 
@@ -76,7 +81,7 @@ def get_spread_soup(type_of_line, tdate = str(date.today()).replace('-','')):
 
 
 	url = "https://classic.sportsbookreview.com/betting-odds/nba-basketball/%s?date=%s"%(url_addon, tdate)
-	now = datetime.datetime.now()
+	now = datetime.now()
 	read_url = requests.get(url)
 
 	soup_dirty = BeautifulSoup(read_url.text, 'html.parser')
@@ -241,7 +246,7 @@ def range_all_dates(start_date, end_date):
 	date_range_list = []
 	for n in range(int ((end_date - start_date).days)+1):
 		d = start_date + timedelta(n)
-		d = d.strftime("%Y%m%d")
+		d = d.strftime("%Y-%m-%d").replace("-", "")
 		date_range_list.append(d)
 	return date_range_list
 
@@ -256,11 +261,23 @@ def format_spreads_data(spreads): ## Get team_ids and merge them into spreads da
 	spreads = spreads.drop(columns = ['team_id', 'team_city'])
 	spreads = spreads.merge(team_cities, how = 'left', left_on = 'opp_team', right_on = 'team_city')
 	spreads['home_team_id'] = spreads['team_id']
-	spreads = spreads.drop(columns = ['team_id', 'team_city'])
+	spreads = spreads.drop(columns = ['team_id', 'team_city', 'time'])
+
+	spreads['date'] = pd.to_datetime(spreads['date'])
+	spreads['date'] = spreads['date'].dt.strftime("%Y-%m-%d")
 
 	spreads = spreads[spreads['side'] == 'away']
 
 	return spreads
+
+def save_spreads(data):
+
+	conn = establish_db_connection('sqlalchemy').connect()
+
+	print "writing spreads to the database..."
+	data.to_sql('spreads', con = conn, if_exists = 'append')
+
+	return None
 
 if __name__ == "__main__":
 	main()

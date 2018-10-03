@@ -37,7 +37,7 @@ def nfl_solver(date, contest_type = None):
 
     ## import csv's with point projections
     ## decision tree to determine import files based on contest type
-    roto_grinders_df = pd.read_csv("%s/projects/NBA_Jam/data/pff_edge_proj.csv"%home_dir, sep = ",", header = 1)
+    roto_grinders_df = pd.read_csv("%s/projects/NBA_Jam/data/pff_edge_proj.csv"%home_dir, sep = ",", header = 1) 
 
     roto_grinders_df['Sal'] = pd.to_numeric(roto_grinders_df['Sal'].str[1:]) ## Reformat Salaries from string to integer
 

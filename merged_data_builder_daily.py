@@ -160,7 +160,7 @@ def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
     games_played = list_games(team_id, game_date)
     games_str = ",".join(games_played)
     season = season_sql[season]
-    r_stats = pd.read_sql("SELECT * FROM four_factors_table WHERE TEAM_ID = " + team_id + " AND FIND_IN_SET(GAME_ID,'" + games_str + "') > 0;", con = conn)
+    r_stats = pd.read_sql("SELECT * FROM four_factors WHERE TEAM_ID = " + team_id + " AND FIND_IN_SET(GAME_ID,'" + games_str + "') > 0;", con = conn)
     trunc_cols = list(r_stats)[6:]
     trunc_cols.insert(0, 'TEAM_ID')
     trunc_cols.insert(1, 'SIDE')
