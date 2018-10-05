@@ -2,7 +2,9 @@ from datetime import date, timedelta, datetime
 import pandas as pd
 from os.path import expanduser
 from db_connection_manager import establish_db_connection
-from config import seasons
+from config import seasons, request_header
+import requests
+import json
 
 home = expanduser("~")
 
@@ -23,6 +25,34 @@ def range_all_dates(start_date, end_date):
 		d = d.strftime("%Y-%m-%d")
 		date_range_list.append(d)
 	return date_range_list
+
+def games_daily(gamedate): ## Get dataframe containing basic information about NBA games that occurred or are occurring on a given date
+
+	# Reformat gamedate to conform with api endpoint
+	gamedate = datetime.strptime(gamedate, '%Y-%m-%d')
+	gamedate = gamedate.strftime('%m/%d/%Y')
+	try:
+		scoreboard_url = 'http://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%gamedate
+		response = requests.get(scoreboard_url, headers=request_header)
+		data = json.loads(response.text)
+		cleaner = data['resultSets'][0]
+		col_names = cleaner['headers']
+	except requests.ConnectionError as e:
+		print e
+
+	# Check how many games there are today
+	scoreboard_len = len(cleaner['rowSet'])
+
+	# Loop through and get each game's info
+	games_today = []
+	for x in range(0,scoreboard_len):
+		game_info = cleaner['rowSet'][x]
+		games_today.append(game_info)
+
+	# Create dataframe containing info about today's game
+	df_matches = pd.DataFrame(games_today, columns = col_names)
+
+	return df_matches
 
 ## Get list of game_ids for each game played by a team up to a specified point in seasons (not including the defined date)
 # Enter date as string YYYY-MM-DD
@@ -49,7 +79,13 @@ def list_games(team_id, date):
 
 	games_list = team_data['GAME_ID'].tolist()
 
-	return games_list
+	today_game = data[(data['GAME_DATE_EST'] == clean_date) & (data['TEAM_ID'] == int(team_id))]
+	if len(today_game) > 0:
+		curr_game = today_game['GAME_ID'].item()
+	else:
+		curr_game = None
+
+	return games_list, curr_game
 
 def season_from_date_str(gamedate):
 
