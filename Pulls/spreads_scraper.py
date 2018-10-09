@@ -46,8 +46,9 @@ def main(gameday = None):
 			else:
 				spreads = spreads.append(games)
 			spreads_final = format_spreads_data(spreads)
-		except:
+		except Exception as e:
 			print "no games on %s"%d
+			print "or %s"%e
 			empty_spreads = pd.DataFrame(columns = ['date','time','side',
                          'team','opp_team','pinnacle_line','pinnacle_odds',
                          '5dimes_line','5dimes_odds',
