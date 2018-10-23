@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 *.csv
+*.ipynb
 log_file.txt
 /env
 .Python
