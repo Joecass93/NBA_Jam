@@ -10,7 +10,7 @@ def get_season_agg(team_id, season_num):
     conn = establish_db_connection('sqlalchemy').connect()
 
     ## get all game_ids for a team in the given season
-    
+
     games_sql = 'SELECT GAME_ID FROM final_scores WHERE TEAM_ID = "%s" and GAME_ID LIKE "%s"'%(team_id, season_num + "0%%")
     games_data = pd.read_sql(games_sql, con = conn)
     games_list = list(games_data['GAME_ID'])
@@ -54,6 +54,7 @@ def aggregate_stats(team_id, to_date = None, to_gameid = None):
 
         else:
             print "No game for %s on %s, please try a new date..."%(team_name, to_date)
+            
             return None
 
 

@@ -66,7 +66,7 @@ def list_games(team_id, date):
 	data = pd.read_sql("SELECT * FROM final_scores", con = conn)
 
 	## Replace this with some intelligent method of knowing the start date of the season in which the user-inputed date exists
-	tdate = '2017-10-17'
+	tdate = '2018-10-16'
 	tdate = datetime.strptime(tdate, '%Y-%m-%d').date()
 	data = data[data['GAME_DATE_EST'] >= tdate]
 

@@ -59,10 +59,12 @@ conn = engine.connect()
 ## Main function
 def main(gamedate = None):
 
+	today = datetime.datetime.now().date().strftime("%Y-%m-%d")
+
 	if gamedate:
 		pass
 	else:
-		gamedate = '2017-10-20'
+		gamedate = today
 
 	gamedate_season = season_from_date_str(gamedate)
 
@@ -91,6 +93,9 @@ def main(gamedate = None):
 
 	print "formatting stats..."
 	daily_preds = format_daily_stats(todays_ff_cum)
+	engine = establish_db_connection('sqlalchemy')
+	conn = engine.connect()
+	todays_ff_cum.to_sql("todays_merged_data", con = conn, if_exists = 'replace')
 
 	print "getting todays spreads..."
 	daily_vegas = spreads_scraper.main(gamedate)
@@ -108,13 +113,17 @@ def main(gamedate = None):
 	output.insert(0, 'game_date', datetime.datetime.strptime(gamedate, '%Y-%m-%d').date())
 
 	## if daily run then write dataframe to daily_picks sql table
-	if gamedate == datetime.datetime.now().date():
+	#if gamedate == datetime.datetime.now().date():
+	if gamedate == today:
 		print "writing predictions to daily picks sql table..."
 		daily_engine = establish_db_connection('sqlalchemy')
 		daily_conn = daily_engine.connect()
 		output.to_sql(name = 'daily_picks', con = daily_conn, if_exists = 'replace', index = False)
 
 		## also append it to the historical dataframe
+
+		## also send email to peeps
+		## daily_picks_report()
 		try:
 			output.to_sql(name = 'historical_picks_table', con = daily_conn, if_exists = 'append', index = False)
 		except Exception as e:
@@ -157,10 +166,14 @@ def todays_matches(gamedate): ## Get dataframe containing basic information abou
 ## Need to get four factors stats at current point in season
 def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
 
-    games_played = list_games(team_id, game_date)
-    games_str = ",".join(games_played)
-    season = season_sql[season]
-    r_stats = pd.read_sql("SELECT * FROM four_factors_table WHERE TEAM_ID = " + team_id + " AND FIND_IN_SET(GAME_ID,'" + games_str + "') > 0;", con = conn)
+    # games_played = list_games(team_id, game_date)
+    # games_str = ",".join(games_played)
+    # season = season_sql[season]
+    # r_stats = pd.read_sql("SELECT * FROM four_factors_table WHERE TEAM_ID = " + team_id + " AND FIND_IN_SET(GAME_ID,'" + games_str + "') > 0;", con = conn)
+    r_stats_sql = "SELECT * FROM four_factors_thru WHERE TEAM_ID = '%s' AND (GAME_ID LIKE '%s' OR GAME_ID LIKE '%s')"%(team_id, "002170%%", "002180%%")
+    r_stats_sql = "SELECT * FROM four_factors_thru WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s'"%(team_id, "002180%%")
+    r_stats = pd.read_sql(r_stats_sql, con = conn)
+    r_stats = r_stats.drop(columns = ['TEAM', 'GAME_ID', 'SIDE'])
     trunc_cols = list(r_stats)[6:]
     trunc_cols.insert(0, 'TEAM_ID')
     trunc_cols.insert(1, 'SIDE')
@@ -168,11 +181,16 @@ def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
 
     ## Get averages for each field
 	# team averages
-    team_stats = pd.DataFrame(data = [[team_id, side, sequence, r_stats['EFG_PCT'].mean(),
-                                        r_stats['FTA_RATE'].mean(), r_stats['TM_TOV_PCT'].mean(),
-                                        r_stats['OREB_PCT'].mean(), r_stats['OPP_EFG_PCT'].mean(),
-                                        r_stats['OPP_FTA_RATE'].mean(), r_stats['OPP_TOV_PCT'].mean(),
-                                        r_stats['OPP_OREB_PCT'].mean()]], columns = trunc_cols)
+    # team_stats = pd.DataFrame(data = [[team_id, side, sequence, r_stats['EFG_PCT'].mean(),
+    #                                     r_stats['FTA_RATE'].mean(), r_stats['TM_TOV_PCT'].mean(),
+    #                                     r_stats['OREB_PCT'].mean(), r_stats['OPP_EFG_PCT'].mean(),
+    #                                     r_stats['OPP_FTA_RATE'].mean(), r_stats['OPP_TOV_PCT'].mean(),
+    #                                     r_stats['OPP_OREB_PCT'].mean()]], columns = trunc_cols)
+
+    team_stats = r_stats.groupby(by = ['TEAM_ID']).mean().reset_index()
+
+    team_stats['SIDE'] = side
+    team_stats['SEQUENCE'] = sequence
 
     return team_stats
 
@@ -237,6 +255,8 @@ def run_daily_algo(match):
 
 def merged_daily_data(daily_preds, daily_vegas):
 
+	daily_preds['home_id'] = daily_preds['home_id'].astype(str)
+	daily_preds['away_id'] = daily_preds['away_id'].astype(str)
 	daily_final = pd.merge(daily_preds, daily_vegas[['away_team_id', 'home_team_id', 'bovada_line']],
 						   left_on = ['home_id', 'away_id'], right_on = ['home_team_id', 'away_team_id'], how = 'left')
 
