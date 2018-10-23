@@ -5,6 +5,8 @@ __pycache__/
 log_file.txt
 /env
 .Python
+algo_testing.py
+*.gitignore
 
 bin/*
 *.log
