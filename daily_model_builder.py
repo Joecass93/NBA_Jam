@@ -35,7 +35,7 @@ class update_database:
 
         print ""
         print "building merged table"
-        self.build_merged_table(self.final_scores, self.stats_df, self.picks_df)
+        self.build_merged_table(self.final_scores, self.picks_df)
 
         print ""
 
@@ -54,16 +54,19 @@ class update_database:
         self.final_scores = final_score_scraper.format_scores(dirty_scores)
 
         print "fetching picks from all games on %s"%prev_day
-        picks_sql = "SELECT * FROM historical_picks_table WHERE game_date = %s"%prev_day
+        picks_sql = "SELECT * FROM historical_picks_table WHERE game_date = '%s'"%prev_day
         self.picks_df = pd.read_sql(picks_sql, con = self.conn)
 
         return None
 
-    def build_merged_table(self, stats, scores, picks):
+    def build_merged_table(self, scores, picks):
 
-        print stats.head()
-        print scores.head()
-        print picks.head()
+        scores_cols = ['game_id', 'pts_away', 'pts_home', 'pts_total']
+        results = picks.merge(scores[scores_cols], how = 'left', on = ['game_id'])
+        results['final_spread'] = results['pts_home'] - results['pts_away']
+        results['spread_winner'] = np.where(results['final_spread'] > results['vegas_spread'],
+                                            results['away_team'], results['home_team'])
+        print results[['away_team', 'home_team', 'vegas_spread', 'final_spread', 'spread_winner']].head()
 
         return None
 

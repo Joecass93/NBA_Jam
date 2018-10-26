@@ -171,7 +171,7 @@ def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
     # season = season_sql[season]
     # r_stats = pd.read_sql("SELECT * FROM four_factors_table WHERE TEAM_ID = " + team_id + " AND FIND_IN_SET(GAME_ID,'" + games_str + "') > 0;", con = conn)
     r_stats_sql = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND (GAME_ID LIKE '%s' OR GAME_ID LIKE '%s')"%(team_id, "002170%%", "002180%%")
-    r_stats_sql = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s'"%(team_id, "002180%%")
+    r_stats_sql = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND GAME_ID > '%s'"%(team_id, "0021701000")
     r_stats = pd.read_sql(r_stats_sql, con = conn)
     r_stats = r_stats.drop(columns = ['TEAM_NAME', 'GAME_ID', 'TEAM_ABBREVIATION', 'TEAM_CITY'])
 

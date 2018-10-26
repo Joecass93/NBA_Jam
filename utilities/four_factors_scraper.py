@@ -73,7 +73,7 @@ def main(start_date = sdate, end_date = edate):
     ## upload to db
     conn = establish_db_connection('sqlalchemy').connect()
     print "writing four factors data to database..."
-    #game_ff_df.to_sql('four_factors', con = conn, if_exists = 'append', index = False)
+    game_ff_df.to_sql('four_factors', con = conn, if_exists = 'append', index = False)
 
     return game_ff_df
 
