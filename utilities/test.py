@@ -24,10 +24,8 @@ conn = engine.connect()
 
 teams_dict = teams['nba_teams']
 
-# games_list = ["'0021300005", '0021300010', '0021300011', '0021400018', '0021500015',
-#               '0021600017', '0021300011', '0021700007', '0021700013', '0021400012',
-#               '0021500006', '0021400020', '0021300017', '0021500007', '0021400013',
-#               '0021600015', '0021300010', "0021500011'"]
+ff_df = pd.read_sql("SELECT * FROM four_factors WHERE GAME_ID LIKE '002180%%'", con = conn)
+print ff_df
 #
 # final_scores_sql = "SELECT game_id, home_team_id, away_team_id FROM flatten_final_scores WHERE game_id IN (%s)"%("', '".join(games_list))
 # final_scores = pd.read_sql(final_scores_sql, con = conn)
@@ -41,9 +39,3 @@ teams_dict = teams['nba_teams']
 #
 # for i, v in home_dict.iteritems():
 #     aggregate_stats_to_date.aggregate_stats(v, to_gameid = i)
-
-
-
-for i,v in teams_dict.iteritems():
-    print "getting stats for %s"%v
-    aggregate_stats_to_date.get_season_agg(i, '00211')

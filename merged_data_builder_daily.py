@@ -170,22 +170,10 @@ def get_cumulative_ff(team_id, game_date, season, side = None, sequence = None):
     # games_str = ",".join(games_played)
     # season = season_sql[season]
     # r_stats = pd.read_sql("SELECT * FROM four_factors_table WHERE TEAM_ID = " + team_id + " AND FIND_IN_SET(GAME_ID,'" + games_str + "') > 0;", con = conn)
-    r_stats_sql = "SELECT * FROM four_factors_thru WHERE TEAM_ID = '%s' AND (GAME_ID LIKE '%s' OR GAME_ID LIKE '%s')"%(team_id, "002170%%", "002180%%")
-    r_stats_sql = "SELECT * FROM four_factors_thru WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s'"%(team_id, "002180%%")
+    r_stats_sql = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND (GAME_ID LIKE '%s' OR GAME_ID LIKE '%s')"%(team_id, "002170%%", "002180%%")
+    r_stats_sql = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s'"%(team_id, "002180%%")
     r_stats = pd.read_sql(r_stats_sql, con = conn)
-    r_stats = r_stats.drop(columns = ['TEAM', 'GAME_ID', 'SIDE'])
-    trunc_cols = list(r_stats)[6:]
-    trunc_cols.insert(0, 'TEAM_ID')
-    trunc_cols.insert(1, 'SIDE')
-    trunc_cols.insert(2, 'SEQUENCE')
-
-    ## Get averages for each field
-	# team averages
-    # team_stats = pd.DataFrame(data = [[team_id, side, sequence, r_stats['EFG_PCT'].mean(),
-    #                                     r_stats['FTA_RATE'].mean(), r_stats['TM_TOV_PCT'].mean(),
-    #                                     r_stats['OREB_PCT'].mean(), r_stats['OPP_EFG_PCT'].mean(),
-    #                                     r_stats['OPP_FTA_RATE'].mean(), r_stats['OPP_TOV_PCT'].mean(),
-    #                                     r_stats['OPP_OREB_PCT'].mean()]], columns = trunc_cols)
+    r_stats = r_stats.drop(columns = ['TEAM_NAME', 'GAME_ID', 'TEAM_ABBREVIATION', 'TEAM_CITY'])
 
     team_stats = r_stats.groupby(by = ['TEAM_ID']).mean().reset_index()
 
@@ -304,7 +292,7 @@ def clean_predictions(daily_final):
 
     ## Get prediction as string
     clean['pred_spread_str'] = np.where(clean['pred_spread'] < 0, clean['away_team'] + " (" + clean['pred_spread'].apply(str) + ")",
-                                    clean['home_team'] + " (" + clean['pred_spread'].apply(str) + ")")
+                                    clean['away_team'] + " (+" + clean['pred_spread'].apply(str) + ")")
     ## Rearrange columns
     clean_cols = clean.columns.tolist()
 
@@ -315,7 +303,7 @@ def clean_predictions(daily_final):
     return final
 
 def best_bet_machine(game_predictions):
-	game_predictions['best_bet'] = np.where(abs(game_predictions['pt_diff']) >= 5, 'Y', 'N')
+	game_predictions['best_bet'] = np.where(abs(game_predictions['pt_diff']) >= 4.5, 'Y', 'N')
 
 	return game_predictions
 

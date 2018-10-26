@@ -103,7 +103,8 @@ def format_scores(dirty_scores):
             win_side = 'home'
             win_id = game_h['TEAM_ID'].item()
 
-        clean_game = pd.DataFrame([[game_a['GAME_DATE_EST'].item(), game_a['GAME_SEQUENCE'].item(), game_a['GAME_ID'].item(),
+        clean_game = pd.DataFrame([[game_a['GAME_DATE_EST'].item().encode('utf-8').split("T", 1)[0],
+                                    game_a['GAME_SEQUENCE'].item(), game_a['GAME_ID'].item(),
                                     game_a['TEAM_ID'].item(), game_a['TEAM_NAME'].item(),
                                     game_h['TEAM_ID'].item(), game_h['TEAM_NAME'].item(),
                                     game_a['PTS'].item(), game_h['PTS'].item(),
@@ -112,6 +113,8 @@ def format_scores(dirty_scores):
             clean_scores = clean_game
         else:
             clean_scores = clean_scores.append(clean_game)
+
+
 
     return clean_scores
 

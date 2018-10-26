@@ -53,7 +53,6 @@ def main(start_date = sdate, end_date = edate):
             games_url = 'https://stats.nba.com/stats/boxscorefourfactorsv2?StartPeriod=1&StartRange=0&EndPeriod=10&EndRange=2147483647&GameID=%s&RangeType=0'%g
             response = sess.get(games_url, headers=request_header)
             print response
-            print games_url
             data = response.text
             data = json.loads(data)
             cleaner = data['resultSets']
@@ -68,15 +67,15 @@ def main(start_date = sdate, end_date = edate):
             rerun_urls.append(games_url)
             pass
 
-    print game_ff_df
+    if len(rerun_urls) > 0:
+        print "The following games could not be scraped: %s"%rerun_urls
 
     ## upload to db
     conn = establish_db_connection('sqlalchemy').connect()
     print "writing four factors data to database..."
-    game_ff_df.to_sql('four_factors', con = conn, if_exists = 'append', index = False)
+    #game_ff_df.to_sql('four_factors', con = conn, if_exists = 'append', index = False)
 
-    print rerun_urls
-    return None
+    return game_ff_df
 
 if __name__ == "__main__":
     main()
