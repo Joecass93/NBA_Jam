@@ -14,28 +14,15 @@ import result_calculator
 home_dir = expanduser("~")
 syspath = '%s/projects/NBA_Jam/'%home_dir
 sys.path.insert(0,syspath)
-from pulls import spreads_scraper
+from pulls import four_factors_scraper
 from utilities import db_connection_manager
-from utilities import flatten_data
-from utilities import aggregate_stats_to_date
+
 
 engine = db_connection_manager.establish_db_connection('sqlalchemy')
 conn = engine.connect()
 
-teams_dict = teams['nba_teams']
+## get list of all games from 2017-18 season
+full_season = pd.read_sql("SELECT * FROM flatten_final_scores WHERE game_id LIKE '002160%%'", con = conn)
+games_list = full_season['game_id'].tolist()
 
-ff_df = pd.read_sql("SELECT * FROM four_factors WHERE GAME_ID LIKE '002180%%'", con = conn)
-print ff_df
-#
-# final_scores_sql = "SELECT game_id, home_team_id, away_team_id FROM flatten_final_scores WHERE game_id IN (%s)"%("', '".join(games_list))
-# final_scores = pd.read_sql(final_scores_sql, con = conn)
-# away_dict = dict(zip(final_scores.game_id, final_scores.away_team_id))
-# home_dict = dict(zip(final_scores.game_id, final_scores.home_team_id))
-#
-# print home_dict
-#
-# for i, v in away_dict.iteritems():
-#     aggregate_stats_to_date.aggregate_stats(v, to_gameid = i)
-#
-# for i, v in home_dict.iteritems():
-#     aggregate_stats_to_date.aggregate_stats(v, to_gameid = i)
+four_factors_scraper.player_stats(games_list = games_list)
