@@ -1,20 +1,34 @@
 import pandas as pd
 import numpy as np
-import datetime
+from datetime import datetime, timedelta
 from db_connection_manager import establish_db_connection
+from argparse import ArgumentParser
+from gsheets_api_manager import df_to_gsheet
+
+parser = ArgumentParser()
+parser.add_argument("-d", "--game_date", help="date to start pulling final scores data from: ex. '2017-11-01'", type=str, required=False)
+
+flags = parser.parse_args()
+
+if flags.game_date:
+    game_date = flags.game_date
+else:
+    game_date = (datetime.now().date() - timedelta(days = 1)).strftime('%Y-%m-%d')
 
 ## Accepts date in string format YYYY-MM-DD
-def main(game_date = None):
+def main(game_date = game_date):
     # Get date for run
     if game_date:
-        game_date_dt = datetime.datetime.strptime(game_date, '%Y-%m-%d').date()
+        game_date_dt = datetime.strptime(game_date, '%Y-%m-%d').date()
     else:
-        game_date_dt = datetime.datetime.now().date()
+        game_date_dt = datetime.now().date()
         game_date = game_date_dt.strftime('%Y-%m-%d')
 
     game_scores, game_picks = get_picks_and_scores(game_date)
 
     daily_result = determine_results(game_scores, game_picks)
+
+    print daily_result
 
     return daily_result
 

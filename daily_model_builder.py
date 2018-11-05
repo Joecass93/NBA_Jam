@@ -3,7 +3,7 @@ import numpy as np
 #from algo import four_factors_builder
 from datetime import datetime, date, timedelta
 from utilities.db_connection_manager import establish_db_connection
-from utilities import four_factors_scraper
+from utilities import four_factors_scraper, assets
 from pulls import final_score_scraper
 from argparse import ArgumentParser
 
@@ -66,17 +66,48 @@ class update_database:
         results['final_spread'] = results['pts_home'] - results['pts_away']
         results['spread_winner'] = np.where(results['final_spread'] > results['vegas_spread'],
                                             results['away_team'], results['home_team'])
-        print results[['away_team', 'home_team', 'vegas_spread', 'final_spread', 'spread_winner']].head()
+        results['pick'] = results['pick_str'].str.split(' ', 1)[0]
+        print results[['away_team', 'home_team', 'vegas_spread', 'final_spread', 'spread_winner', 'pick_str', 'pick']].head()
 
         return None
 
     def upload_data_to_db(self, data, table):
 
         ## make this better later
-        data.to_sql(table, con = self.conn, if_exists = 'append')
+        #data.to_sql(table, con = self.conn, if_exists = 'append')
 
         return None
 
+class Model_Builder:
+
+    def __init__(self):
+        self.conn = establish_db_connection('sqlalchemy').connect()
+        self.today = datetime.now().strftime('%Y-%m-%d')
+        self.main()
+
+    def main(self):
+
+        todays_games = assets.games_daily(self.today)
+
+        print todays_games
+        print list(todays_games)
+
+
+        return None
+
+    def build_weighted_team_stats(self):
+
+
+
+        return weighted_team_stats
+
+
 
 if __name__ == "__main__":
-    update_database()
+    Model_Builder()
+    # conn = establish_db_connection('sqlalchemy').connect()
+    # scores_sql = "SELECT * FROM historical_scores_table WHERE game_id LIKE '%s'"%('002180%%')
+    # picks_sql = "SELECT * FROM historical_picks_table WHERE game_id LIKE '%s'"%('002180%%')
+    # scores = pd.read_sql(scores_sql, con = conn)
+    # picks = pd.read_sql(picks_sql, con = conn)
+    # update_database().build_merged_table(scores, picks)

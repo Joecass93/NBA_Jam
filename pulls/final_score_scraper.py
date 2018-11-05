@@ -116,6 +116,8 @@ def format_scores(dirty_scores):
 
 
 
+
+
     return clean_scores
 
 def write_scores_to_db(scores, sql_table, sql_engine, if_exists = 'append'):

@@ -1,7 +1,7 @@
 import pandas as pd
 import sys
 sys.path.insert(0, "/Users/joe/projects/NBA_Jam/")
-from utilities import config, db_connection_manager
+from utilities import config, db_connection_manager, assets
 import requests
 import json
 
@@ -10,7 +10,7 @@ sess = requests.Session()
 adapter = requests.adapters.HTTPAdapter(max_retries=10)
 sess.mount('http://', adapter)
 
-class player_stats:
+class player_stats():
 
     def __init__(self, game_date = None, games_list = None):
 
@@ -77,6 +77,7 @@ def upload_stats_to_db(stats, table):
     print ""
     print "Uploading to db..."
     print ""
+    print stats
     conn = db_connection_manager.establish_db_connection('sqlalchemy').connect()
     stats.to_sql(table, con = conn, if_exists = 'append')
 
@@ -86,7 +87,11 @@ def upload_stats_to_db(stats, table):
 
 def get_games_list(game_date):
 
-    games_list = []
+    games_df = assets.games_daily(game_date)
+
+    games_list = games_df['GAME_ID'].tolist()
+
+    print games_list
 
     return games_list
 

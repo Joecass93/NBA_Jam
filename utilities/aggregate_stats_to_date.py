@@ -54,7 +54,7 @@ def aggregate_stats(team_id, to_date = None, to_gameid = None):
 
         else:
             print "No game for %s on %s, please try a new date..."%(team_name, to_date)
-            
+
             return None
 
 
@@ -71,3 +71,6 @@ def aggregate_stats(team_id, to_date = None, to_gameid = None):
 
 
     return agg_stats
+
+if __name__ == "__main__":
+    aggregate_stats()

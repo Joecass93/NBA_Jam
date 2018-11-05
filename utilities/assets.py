@@ -29,6 +29,7 @@ def range_all_dates(start_date, end_date):
 def games_daily(gamedate): ## Get dataframe containing basic information about NBA games that occurred or are occurring on a given date
 
 	# Reformat gamedate to conform with api endpoint
+	print gamedate
 	gamedate = datetime.strptime(gamedate, '%Y-%m-%d')
 	gamedate = gamedate.strftime('%m/%d/%Y')
 	try:
