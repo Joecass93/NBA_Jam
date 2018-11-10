@@ -3,8 +3,8 @@ import numpy as np
 #from algo import four_factors_builder
 from datetime import datetime, date, timedelta
 from utilities.db_connection_manager import establish_db_connection
-from utilities import four_factors_scraper, assets
-from pulls import final_score_scraper
+from utilities import assets
+from pulls import four_factors_scraper, final_score_scraper
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
@@ -47,7 +47,8 @@ class update_database:
         prev_day = prev_day.strftime("%Y-%m-%d")
 
         print "fetching stats from all games on %s"%prev_day
-        self.stats_df = four_factors_scraper.main(prev_day, prev_day)
+        self.stats_df = four_factors_scraper().player_stats(prev_day)
+        #self.stats_df = four_factors_scraper().team_stats(prev_day)
 
         print "fetching scores from all games on %s"%prev_day
         dirty_scores = final_score_scraper.get_scores(prev_day)

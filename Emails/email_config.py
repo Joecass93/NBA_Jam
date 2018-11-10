@@ -8,5 +8,6 @@ degenerates = {'TJ Wilson':'wilsontj28@gmail.com',
                'Silas Beyman':'smbeyman@gmail.com',
                'Brendon Anderson':'brendonanderson4@aol.com',
                'Sam Slater':'Sfslater12@gmail.com',
-               'Max Feigenbaum':'Maxfeig@gmail.com'
+               'Max Feigenbaum':'Maxfeig@gmail.com',
+               'Louis Beck':'louis.beck12@gmail.com'
                }

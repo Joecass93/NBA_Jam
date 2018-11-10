@@ -69,7 +69,62 @@ class player_stats():
 
         return None
 
+class team_stats():
 
+    def __init__(self, game_date = None):
+
+        self.sess = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(max_retries=10)
+        self.sess.mount('http://', adapter)
+
+        self.game_date = game_date
+        self.games_list = games_list
+
+        self.main()
+
+    def main(self):
+
+        ## Get list of all game ids in the specified date range
+        games_range = range_all_dates(start_date, end_date)
+        games_list = []
+        for d in games_range:
+            scoreboard = games_daily(d)
+            d_games = list(scoreboard['GAME_ID'])
+            games_list.append(d_games)
+
+        ## denest the list of game ids
+        games_list = [val for sublist in games_list for val in sublist]
+        full_games_list = []
+
+        ## loop through and create a dataframe containing four factors data for each game in the list
+        rerun_urls = []
+        for i, g in enumerate(games_list):
+            print "getting four factors data for game id = %s"%g
+            try:
+                games_url = 'https://stats.nba.com/stats/boxscorefourfactorsv2?StartPeriod=1&StartRange=0&EndPeriod=10&EndRange=2147483647&GameID=%s&RangeType=0'%g
+                response = sess.get(games_url, headers=request_header)
+                print response
+                data = response.text
+                data = json.loads(data)
+                cleaner = data['resultSets']
+                cleanest = cleaner[1]
+                col_names = cleanest['headers']
+                game_data = cleanest['rowSet']
+                if i == 0:
+                    game_ff_df = pd.DataFrame(game_data, columns = col_names)
+                else:
+                    game_ff_df = game_ff_df.append(pd.DataFrame(game_data, columns = col_names))
+            except:
+                rerun_urls.append(games_url)
+                pass
+
+        if len(rerun_urls) > 0:
+            print "The following games could not be scraped: %s"%rerun_urls
+
+        ## upload to db
+        upload_stats_to_db(game_ff_df, 'four_factors')
+
+        return None
 
 
 def upload_stats_to_db(stats, table):
