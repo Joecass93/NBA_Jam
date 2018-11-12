@@ -74,10 +74,23 @@ WSGI_APPLICATION = 'nba_jam.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.10/ref/settings/#databases
 
+### uncomment for local testing ###
+#
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'nba_api',
+        'USER': 'nbajamadmin',
+        'PASSWORD': 'moneyteam2018',
+        'HOST': 'aas6wo5k9lybv0.c5tgdlkxq25p.us-east-2.rds.amazonaws.com',
+        'PORT': '3306',
     }
 }
 
@@ -119,3 +132,4 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = 'static'

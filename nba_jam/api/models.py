@@ -6,8 +6,6 @@ from django.db import models
 class Results(models.Model):
     game_date = models.DateField()
     game_id = models.CharField(max_length = 15)
-    away_id = models.CharField(max_length = 15)
-    home_id = models.CharField(max_length = 15)
     away_team = models.CharField(max_length = 3)
     home_team = models.CharField(max_length = 3)
     away_pts = models.FloatField()
