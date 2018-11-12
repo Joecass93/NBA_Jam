@@ -21,3 +21,8 @@ pip-selfcheck.json
 .git
 temp.py
 venv/*
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
