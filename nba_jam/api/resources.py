@@ -1,5 +1,5 @@
 from tastypie.resources import ModelResource
-from api.models import Results
+from api.models import Results, Picks
 from tastypie.authorization import Authorization
 
 class ResultsResource(ModelResource):
@@ -15,4 +15,15 @@ class ResultsResource(ModelResource):
             "best_bet":'exact',
             "team_picked":'exact',
             "team_covered":'exact'
+        }
+
+class PicksResource(ModelResource):
+    class Meta:
+        queryset = Picks.objects.all()
+        resource_name = 'picks'
+        authorization = Authorization()
+        filtering = {
+            "home_team":'exact',
+            "away_team":'exact',
+            "best_bet":'exact'
         }

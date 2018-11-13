@@ -19,5 +19,17 @@ class Results(models.Model):
     best_bet = models.CharField(max_length = 3)
 
 
+class Picks(models.Model):
+    game_date = models.DateField()
+    rank = models.FloatField()
+    game_id = models.CharField(max_length = 15)
+    away_team = models.CharField(max_length = 3)
+    home_team = models.CharField(max_length = 3)
+    vegas_spread_str = models.CharField(max_length = 20)
+    pred_spread_str = models.CharField(max_length = 20)
+    pick_str = models.CharField(max_length = 20)
+    best_bet = models.CharField(max_length = 3)
+
+
 def __str__(self):
     return self

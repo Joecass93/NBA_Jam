@@ -15,11 +15,13 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-from api.resources import ResultsResource
+from api.resources import ResultsResource, PicksResource
 
 results_resource = ResultsResource()
+picks_resource = PicksResource()
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^api/', include(results_resource.urls)),
+    url(r'^api/', include(picks_resource.urls)),
 ]
