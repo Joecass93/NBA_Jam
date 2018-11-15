@@ -8,13 +8,15 @@ from utilities import establish_db_connection
 
 class Command(BaseCommand):
 
-    help = "builds a json containing analytics about the model's performance"
+    help = "builds jsons containing analytics about the model's performance"
 
     def handle(self, *args, **options):
 
         self._get_data()
 
         self._build_date_breakdowns()
+
+        self._build_team_breakdowns()
 
     def _get_data(self):
 
@@ -52,6 +54,9 @@ class Command(BaseCommand):
                               date_range = '%s - %s'%(f.strftime('%B %d, %Y'), today_str))
 
             agg_data.save()
+
+    def _build_team_breakdowns(self):
+        print "bleh"
 
     def _delete_from_model(self, table):
 
