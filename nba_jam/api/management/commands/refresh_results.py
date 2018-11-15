@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime, date
 from django.core.management.base import BaseCommand
 from api.models import Results, Picks
-import sqlalchemy
+from utilities import establish_db_connection
 
 class Command(BaseCommand):
 
@@ -38,7 +38,7 @@ class Command(BaseCommand):
         self.picks_conn = establish_db_connection('sqlalchemy', 'moneyteam')
         self.picks_df = pd.read_sql("SELECT * FROM daily_picks", con = self.picks_conn)
 
-        delete_from_model('picks')
+        self._delete_from_model('picks')
         for index, row in self.picks_df.iterrows():
             self._update_picks(row)
 
@@ -57,20 +57,3 @@ class Command(BaseCommand):
             Results.objects.all().delete()
         elif table == 'picks':
             Picks.objects.all().delete()
-
-
-
-def establish_db_connection(connection_package, db):
-
-    if db == 'moneyteam':
-        engine = sqlalchemy.create_engine('mysql://' + 'moneyteamadmin' + ':' + 'moneyteam2018' +
-            '@' + 'nba-jam.c5tgdlkxq25p.us-east-2.rds.amazonaws.com' + ':' + '3306' + '/nba_master', encoding='utf-8')
-
-        return engine
-    elif db == 'nbaapi':
-        engine = sqlalchemy.create_engine('mysql://' + 'nbajamadmin' + ':' + 'moneyteam2018' +
-            '@' + 'aas6wo5k9lybv0.c5tgdlkxq25p.us-east-2.rds.amazonaws.com' + ':' + '3306' + '/nba_api', encoding='utf-8')
-
-        return engine
-    else:
-        raise ValueError('Invalid connection package - ' + str(connection_package) )

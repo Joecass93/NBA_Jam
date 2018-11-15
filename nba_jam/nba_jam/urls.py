@@ -15,13 +15,20 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-from api.resources import ResultsResource, PicksResource
+from api.resources import ResultsResource, PicksResource, CurrWeekResource, Last30dResource, Last7dResource
 
 results_resource = ResultsResource()
 picks_resource = PicksResource()
+currweek_resource = CurrWeekResource()
+last7d_resource = Last7dResource()
+last30d_resource = Last30dResource()
+
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^api/', include(results_resource.urls)),
     url(r'^api/', include(picks_resource.urls)),
+    url(r'^api/', include(currweek_resource.urls)),
+    url(r'^api/', include(last7d_resource.urls)),
+    url(r'^api/', include(last30d_resource.urls)),
 ]

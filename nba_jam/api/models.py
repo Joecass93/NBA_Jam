@@ -31,5 +31,35 @@ class Picks(models.Model):
     best_bet = models.CharField(max_length = 3)
 
 
+class Last30d(models.Model):
+    total_games = models.FloatField()
+    total_bestbets = models.FloatField()
+    wins = models.FloatField()
+    losses = models.FloatField()
+    no_bets = models.FloatField()
+    best_bet_wins = models.FloatField()
+    date_range = models.CharField(max_length = 100)
+
+
+## starts on monday
+class CurrWeek(models.Model):
+    total_games = models.FloatField()
+    total_bestbets = models.FloatField()
+    wins = models.FloatField()
+    losses = models.FloatField()
+    no_bets = models.FloatField()
+    best_bet_wins = models.FloatField()
+    date_range = models.CharField(max_length = 100)
+
+
+class Last7d(models.Model):
+    total_games = models.FloatField()
+    total_bestbets = models.FloatField()
+    wins = models.FloatField()
+    losses = models.FloatField()
+    no_bets = models.FloatField()
+    best_bet_wins = models.FloatField()
+    date_range = models.CharField(max_length = 100)
+
 def __str__(self):
     return self
