@@ -1,5 +1,6 @@
 from tastypie.resources import ModelResource
 from api.models import Results, Picks, CurrWeek, Last30d, Last7d
+from api.models import TeamsCurrWeek, TeamsLast30d, TeamsLast7d
 from tastypie.authorization import Authorization
 
 class ResultsResource(ModelResource):
@@ -45,3 +46,33 @@ class Last30dResource(ModelResource):
         queryset = Last30d.objects.all()
         resource_name = 'last30d'
         authorization = Authorization()
+
+class TeamCurrWeekResource(ModelResource):
+    class Meta:
+        queryset = TeamsCurrWeek.objects.all()
+        resource_name = 'teamcurrweek'
+        authorization = Authorization()
+        filtering = {
+            "team":'exact',
+            "team_id":'exact'
+        }
+
+class TeamLast7dResource(ModelResource):
+    class Meta:
+        queryset = TeamsLast7d.objects.all()
+        resource_name = 'teamlast7d'
+        authorization = Authorization()
+        filtering = {
+            "team":'exact',
+            "team_id":'exact'
+        }
+
+class TeamLast30dResource(ModelResource):
+    class Meta:
+        queryset = TeamsLast30d.objects.all()
+        resource_name = 'teamlast30d'
+        authorization = Authorization()
+        filtering = {
+            "team":'exact',
+            "team":'exact'
+        }

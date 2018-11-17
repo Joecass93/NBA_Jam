@@ -57,7 +57,7 @@ def games_daily(gamedate): ## Get dataframe containing basic information about N
 
 ## Get list of game_ids for each game played by a team up to a specified point in seasons (not including the defined date)
 # Enter date as string YYYY-MM-DD
-def list_games(team_id, date):
+def list_games(team_id, date, start_date = None):
 	## Transform date from string
 	clean_date = datetime.strptime(date, '%Y-%m-%d').date()
 
@@ -67,9 +67,11 @@ def list_games(team_id, date):
 	data = pd.read_sql("SELECT * FROM final_scores", con = conn)
 
 	## Replace this with some intelligent method of knowing the start date of the season in which the user-inputed date exists
-	tdate = '2018-10-16'
-	tdate = datetime.strptime(tdate, '%Y-%m-%d').date()
-	data = data[data['GAME_DATE_EST'] >= tdate]
+	if start_date is None:
+		start_date = '2018-10-16'
+
+	start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+	data = data[data['GAME_DATE_EST'] >= start_date]
 
 	## Limit data based on specified date
 	trunc_data = data[data['GAME_DATE_EST'] < clean_date]

@@ -61,5 +61,50 @@ class Last7d(models.Model):
     best_bet_wins = models.FloatField()
     date_range = models.CharField(max_length = 100)
 
+class TeamsLast30d(models.Model):
+    team = models.CharField(max_length = 50)
+    team_abbrv = models.CharField(max_length = 3)
+    team_id = models.CharField(max_length = 15)
+    games = models.FloatField()
+    games_picked = models.FloatField()
+    wins = models.FloatField()
+    losses = models.FloatField()
+    total_bb_picked = models.FloatField()
+    best_bet_wins = models.FloatField()
+    date_range = models.CharField(max_length = 100)
+    fav_games = models.FloatField()
+    cover_games = models.FloatField()
+
+class TeamsLast7d(models.Model):
+    team = models.CharField(max_length = 50)
+    team_abbrv = models.CharField(max_length = 3)
+    team_id = models.CharField(max_length = 15)
+    games = models.FloatField()
+    games_picked = models.FloatField()
+    wins = models.FloatField()
+    losses = models.FloatField()
+    total_bb_picked = models.FloatField()
+    best_bet_wins = models.FloatField()
+    date_range = models.CharField(max_length = 100)
+    fav_games = models.FloatField()
+    cover_games = models.FloatField()
+
+## starts on monday
+class TeamsCurrWeek(models.Model):
+    team = models.CharField(max_length = 50)
+    team_abbrv = models.CharField(max_length = 3)
+    team_id = models.CharField(max_length = 15)
+    games = models.FloatField()
+    games_picked = models.FloatField()
+    wins = models.FloatField()
+    losses = models.FloatField()
+    total_bb_picked = models.FloatField()
+    best_bet_wins = models.FloatField()
+    date_range = models.CharField(max_length = 100)
+    fav_games = models.FloatField()
+    cover_games = models.FloatField()
+
+
+
 def __str__(self):
     return self
