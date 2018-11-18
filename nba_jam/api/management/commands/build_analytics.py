@@ -94,11 +94,3 @@ def delete_from_model(table):
 
     model = eval(table)
     model.objects.all().delete()
-
-    # if table == 'CurrWeek':
-    #     CurrWeek.objects.all().delete()
-    # elif table == 'Last30d':
-    #     Last30d.objects.all().delete()
-    # elif table == 'Last7d':
-    #     Last7d.objects.all().delete()
-    # el

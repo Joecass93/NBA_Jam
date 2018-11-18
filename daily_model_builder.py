@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
-#from algo import four_factors_builder
 from datetime import datetime, date, timedelta
 from utilities.db_connection_manager import establish_db_connection
-from utilities import assets
-from pulls import four_factors_scraper, final_score_scraper
+from utilities import assets, result_calculator, config
+from pulls.final_score_scraper import get_scores, format_scores
 from argparse import ArgumentParser
+import requests
+import json
 
 parser = ArgumentParser()
 parser.add_argument("-dt", "--game_date", help = "enter game date as string", type = str, required = False)
@@ -17,98 +18,82 @@ if flags.game_date:
 else:
     game_date = datetime.now().date().strftime("%Y-%m-%d")
 
-class update_database:
+## API Error handling
+sess = requests.Session()
+adapter = requests.adapters.HTTPAdapter(max_retries=10)
+sess.mount('http://', adapter)
+
+class MasterUpdate():
 
     def __init__(self, gamedate = game_date):
 
-        self.conn = establish_db_connection("sqlalchemy").connect()
+        self.conn = establish_db_connection('sqlalchemy').connect()
         self.gamedate = gamedate
 
-        self.main()
+        self.today = datetime.now().date().strftime('%Y-%m-%d')
+        self.prev_day = (datetime.now().date() - timedelta(days = 1)).strftime('%Y-%m-%d')
 
-    def main(self):
-
-        self.fetch_data()
-
-        self.upload_data_to_db(self.final_scores, "new_final_scores")
-        self.upload_data_to_db(self.stats_df, "new_team_stats")
-
+        print "Getting list of games for %s"%self.prev_day
         print ""
-        print "building merged table"
-        self.build_merged_table(self.final_scores, self.picks_df)
+        self.games_list = get_games_list(self.prev_day)
 
-        print ""
+        self._fetch_game_stats()
+        self._fetch_final_scores()
 
-        return None
-
-    def fetch_data(self):
-
-        prev_day = datetime.strptime(self.gamedate, "%Y-%m-%d").date() - timedelta(days = 1)
-        prev_day = prev_day.strftime("%Y-%m-%d")
-
-        print "fetching stats from all games on %s"%prev_day
-        self.stats_df = four_factors_scraper().player_stats(prev_day)
-        #self.stats_df = four_factors_scraper().team_stats(prev_day)
-
-        print "fetching scores from all games on %s"%prev_day
-        dirty_scores = final_score_scraper.get_scores(prev_day)
-        self.final_scores = final_score_scraper.format_scores(dirty_scores)
-
-        print "fetching picks from all games on %s"%prev_day
-        picks_sql = "SELECT * FROM historical_picks_table WHERE game_date = '%s'"%prev_day
-        self.picks_df = pd.read_sql(picks_sql, con = self.conn)
-
-        return None
-
-    def build_merged_table(self, scores, picks):
-
-        scores_cols = ['game_id', 'pts_away', 'pts_home', 'pts_total']
-        results = picks.merge(scores[scores_cols], how = 'left', on = ['game_id'])
-        results['final_spread'] = results['pts_home'] - results['pts_away']
-        results['spread_winner'] = np.where(results['final_spread'] > results['vegas_spread'],
-                                            results['away_team'], results['home_team'])
-        results['pick'] = results['pick_str'].str.split(' ', 1)[0]
-        print results[['away_team', 'home_team', 'vegas_spread', 'final_spread', 'spread_winner', 'pick_str', 'pick']].head()
-
-        return None
-
-    def upload_data_to_db(self, data, table):
-
-        ## make this better later
-        #data.to_sql(table, con = self.conn, if_exists = 'append')
-
-        return None
-
-class Model_Builder:
-
-    def __init__(self):
-        self.conn = establish_db_connection('sqlalchemy').connect()
-        self.today = datetime.now().strftime('%Y-%m-%d')
-        self.main()
-
-    def main(self):
-
-        todays_games = assets.games_daily(self.today)
-
-        print todays_games
-        print list(todays_games)
+        self._update_db()
 
 
-        return None
+    def _fetch_game_stats(self):
 
-    def build_weighted_team_stats(self):
+        for i, g in enumerate(self.games_list):
+            print "Getting stats for game: %s (%s/%s)"%(g, i+1, len(self.games_list))
+
+            game_url = 'https://stats.nba.com/stats/boxscorefourfactorsv2?StartPeriod=1&StartRange=0&EndPeriod=10&EndRange=2147483647&GameID=%s&RangeType=0'%g
+            response = sess.get(game_url, headers=config.request_header)
+            game_dict = json.loads(response.text)
+            player_json = game_dict['resultSets'][0]
+            team_json = game_dict['resultSets'][1]
+            pcol_names = player_json['headers']
+            tcol_names = team_json['headers']
+            player_stats = player_json['rowSet']
+            team_stats = team_json['rowSet']
+            pgame_df = pd.DataFrame(data = player_stats, columns = pcol_names)
+            tgame_df = pd.DataFrame(data = team_stats, columns = tcol_names)
+
+            print " -> Gottem"
+
+            if i == 0:
+                self.players_df = pgame_df
+                self.teams_df = tgame_df
+            else:
+                self.players_df = self.players_df.append(pgame_df)
+                self.teams_df = self.teams_df.append(tgame_df)
+
+    def _fetch_final_scores(self):
+
+        raw_scores = get_scores(self.prev_day)
+
+        self.scores_df = format_scores(raw_scores)
 
 
+    def _update_db(self):
 
-        return weighted_team_stats
+        for x in ['players_df', 'teams_df', 'scores_df']:
+            tbl = 'self.%s'%x
+            print tbl
+            _tbl = eval(tbl)
+
+            print "Uploading data to %s"%x
+            _tbl.to_sql(x, con = self.conn)
 
 
+def get_games_list(game_date):
+
+    games_df = assets.games_daily(game_date)
+
+    games_list = games_df['GAME_ID'].tolist()
+
+    return games_list
 
 if __name__ == "__main__":
-    Model_Builder()
-    # conn = establish_db_connection('sqlalchemy').connect()
-    # scores_sql = "SELECT * FROM historical_scores_table WHERE game_id LIKE '%s'"%('002180%%')
-    # picks_sql = "SELECT * FROM historical_picks_table WHERE game_id LIKE '%s'"%('002180%%')
-    # scores = pd.read_sql(scores_sql, con = conn)
-    # picks = pd.read_sql(picks_sql, con = conn)
-    # update_database().build_merged_table(scores, picks)
+    MasterUpdate()

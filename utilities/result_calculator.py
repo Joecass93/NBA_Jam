@@ -36,10 +36,12 @@ def main(start_date = start_date, end_date = end_date):
         print "determing results..."
         daily_result = determine_results(game_scores, game_picks)
 
-
         if daily_result is not None:
             print "uploading to db..."
-            daily_result.to_sql("results_table", if_exists = 'append', con = conn)
+            try:
+                daily_result.to_sql("results_table", if_exists = 'append', con = conn)
+            except Exception as e:
+                print "tried to upload duplicate records to results_table"
         else:
             print "no games today"
         print ""
@@ -70,7 +72,6 @@ def determine_results(game_scores, game_picks):
 
     ## Get list of games ids
     games_list = list(game_picks['game_id'])
-    print games_list
     if len(games_list) > 0:
         pass
     else:
