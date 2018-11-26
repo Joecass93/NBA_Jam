@@ -4,20 +4,19 @@ from db_connection_manager import establish_db_connection
 import requests
 import json
 from argparse import ArgumentParser
-from datetime import datetime, date
-from assets import range_all_dates, games_daily
-
+from datetime import datetime, date, timedelta
+from assets import games_daily, range_all_dates
 
 ## API Error handling
 sess = requests.Session()
 adapter = requests.adapters.HTTPAdapter(max_retries=10)
 sess.mount('http://', adapter)
 
-
 ## Argument Parsing
 parser = ArgumentParser()
 parser.add_argument("-s", "--start_date", help="date to start pulling final scores data from: ex. '2017-11-01'", type=str, required=False)
 parser.add_argument("-e", "--end_date", help = "date to end pulling final scores data from: ex. '2017-11-01'", type=str, required=False)
+parser.add_argument("-t", "--type", help = "type of scrape to perform (player or team stats), default is both", type=str, required=False)
 
 flags = parser.parse_args()
 
@@ -29,53 +28,58 @@ if flags.end_date:
     edate = flags.end_date
 else:
     edate = sdate
+if flags.type:
+    type = flags.type
+else:
+    type = None
 
-## functions start here
-def main(start_date = sdate, end_date = edate):
+def main(start_date = sdate, end_date = edate, type = type):
+    drange = range_all_dates(start_date, end_date)
+    for d in drange:
+        pstats, tstats = _fetch_game_stats(d)
+        print "Uploading stats for %s to db..."%d
+        _upload_to_db(pstats, 'four_factors_player')
+        print " -> Uploaded player stats!"
+        _upload_to_db(tstats, 'four_factors_team')
+        print " -> Uploaded team stats!"
+        print ""
 
-    ## Get list of all game ids in the specified date range
-    games_range = range_all_dates(start_date, end_date)
-    games_list = []
-    for d in games_range:
-        scoreboard = games_daily(d)
-        d_games = list(scoreboard['GAME_ID'])
-        games_list.append(d_games)
+    return None
 
-    ## denest the list of game ids
-    games_list = [val for sublist in games_list for val in sublist]
-    full_games_list = []
-
-    ## loop through and create a dataframe containing four factors data for each game in the list
-    rerun_urls = []
+def _fetch_game_stats(prev_day):
+    games_list = _get_games_list(prev_day)
+    print "Getting stats for %s..."%prev_day
     for i, g in enumerate(games_list):
-        print "getting four factors data for game id = %s"%g
-        try:
-            games_url = 'https://stats.nba.com/stats/boxscorefourfactorsv2?StartPeriod=1&StartRange=0&EndPeriod=10&EndRange=2147483647&GameID=%s&RangeType=0'%g
-            response = sess.get(games_url, headers=request_header)
-            print response
-            data = response.text
-            data = json.loads(data)
-            cleaner = data['resultSets']
-            cleanest = cleaner[1]
-            col_names = cleanest['headers']
-            game_data = cleanest['rowSet']
-            if i == 0:
-                game_ff_df = pd.DataFrame(game_data, columns = col_names)
-            else:
-                game_ff_df = game_ff_df.append(pd.DataFrame(game_data, columns = col_names))
-        except:
-            rerun_urls.append(games_url)
-            pass
+        print " -> %s/%s"%(i+1, len(games_list))
+        game_url = 'https://stats.nba.com/stats/boxscorefourfactorsv2?StartPeriod=1&StartRange=0&EndPeriod=10&EndRange=2147483647&GameID=%s&RangeType=0'%g
+        response = sess.get(game_url, headers=request_header)
+        game_dict = json.loads(response.text)
+        pcol_names = game_dict['resultSets'][0]['headers']
+        player_stats = game_dict['resultSets'][0]['rowSet']
+        tcol_names = game_dict['resultSets'][1]['headers']
+        team_stats = game_dict['resultSets'][1]['rowSet']
 
-    if len(rerun_urls) > 0:
-        print "The following games could not be scraped: %s"%rerun_urls
+        pgame_df = pd.DataFrame(data = player_stats, columns = pcol_names)
+        tgame_df = pd.DataFrame(data = team_stats, columns = tcol_names)
 
-    ## upload to db
+        if i == 0:
+            players_df = pgame_df
+            teams_df = tgame_df
+        else:
+            players_df = players_df.append(pgame_df)
+            teams_df = teams_df.append(tgame_df)
+
+    return players_df, teams_df
+
+def _get_games_list(game_date):
+    games_df = games_daily(game_date)
+    games_list = games_df['GAME_ID'].tolist()
+    return games_list
+
+def _upload_to_db(table, db_tbl):
     conn = establish_db_connection('sqlalchemy').connect()
-    print "writing four factors data to database..."
-    game_ff_df.to_sql('four_factors', con = conn, if_exists = 'append', index = False)
-
-    return game_ff_df
+    table.to_sql(db_tbl, con = conn, if_exists = 'append', index = False)
+    return None
 
 if __name__ == "__main__":
     main()

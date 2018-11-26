@@ -2,98 +2,177 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, date, timedelta
 from utilities.db_connection_manager import establish_db_connection
-from utilities import assets, result_calculator, config
+from utilities import assets, result_calculator, config, four_factors_scraper
 from pulls.final_score_scraper import get_scores, format_scores
-from argparse import ArgumentParser
-import requests
-import json
+from pulls import spreads_scraper as ss
+import requests, json
 
-parser = ArgumentParser()
-parser.add_argument("-dt", "--game_date", help = "enter game date as string", type = str, required = False)
+pd.options.mode.chained_assignment = None
 
-flags = parser.parse_args()
-
-if flags.game_date:
-    game_date = flags.game_date
-else:
-    game_date = datetime.now().date().strftime("%Y-%m-%d")
-
-## API Error handling
+## API Error handlings
 sess = requests.Session()
 adapter = requests.adapters.HTTPAdapter(max_retries=10)
 sess.mount('http://', adapter)
 
 class MasterUpdate():
 
-    def __init__(self, gamedate = game_date):
-
+    def __init__(self):
         self.conn = establish_db_connection('sqlalchemy').connect()
-        self.gamedate = gamedate
 
-        self.today = datetime.now().date().strftime('%Y-%m-%d')
-        self.prev_day = (datetime.now().date() - timedelta(days = 1)).strftime('%Y-%m-%d')
-
-        print "Getting list of games for %s"%self.prev_day
-        print ""
+        self.today = datetime.now().strftime('%Y-%m-%d')
+        self.prev_day = (datetime.strptime(self.today, '%Y-%m-%d').date() - timedelta(days = 1)).strftime('%Y-%m-%d')
         self.games_list = get_games_list(self.prev_day)
 
         self._fetch_game_stats()
         self._fetch_final_scores()
-
+        self._fetch_spreads()
         self._update_db()
 
-
     def _fetch_game_stats(self):
-
-        for i, g in enumerate(self.games_list):
-            print "Getting stats for game: %s (%s/%s)"%(g, i+1, len(self.games_list))
-
-            game_url = 'https://stats.nba.com/stats/boxscorefourfactorsv2?StartPeriod=1&StartRange=0&EndPeriod=10&EndRange=2147483647&GameID=%s&RangeType=0'%g
-            response = sess.get(game_url, headers=config.request_header)
-            game_dict = json.loads(response.text)
-            player_json = game_dict['resultSets'][0]
-            team_json = game_dict['resultSets'][1]
-            pcol_names = player_json['headers']
-            tcol_names = team_json['headers']
-            player_stats = player_json['rowSet']
-            team_stats = team_json['rowSet']
-            pgame_df = pd.DataFrame(data = player_stats, columns = pcol_names)
-            tgame_df = pd.DataFrame(data = team_stats, columns = tcol_names)
-
-            print " -> Gottem"
-
-            if i == 0:
-                self.players_df = pgame_df
-                self.teams_df = tgame_df
-            else:
-                self.players_df = self.players_df.append(pgame_df)
-                self.teams_df = self.teams_df.append(tgame_df)
+        self.player_stats, self.team_stats = four_factors_scraper._fetch_game_stats(self.prev_day)
 
     def _fetch_final_scores(self):
-
         raw_scores = get_scores(self.prev_day)
-
         self.scores_df = format_scores(raw_scores)
 
+    def _fetch_spreads(self):
+        self.spreads_df = ss.main(self.today)
+        self.spreads_df.drop(columns = ['time'], inplace = True)
+        self.spreads_df['date'] = self.spreads_df['date'].str[0:4] + "-" + self.spreads_df['date'].str[4:6] + "-" + self.spreads_df['date'].str[6:8]
 
     def _update_db(self):
+        schema = {'four_factors_player': self.player_stats,
+                  'four_factors_team': self.team_stats,
+                  'final_scores': self.scores_df,
+                  'spreads': self.spreads_df}
 
-        for x in ['players_df', 'teams_df', 'scores_df']:
-            tbl = 'self.%s'%x
-            print tbl
-            _tbl = eval(tbl)
+        for tbl, data in schema.iteritems():
+            print "Uploading data to %s"%tbl
+            data.to_sql(tbl, con = self.conn, if_exists = 'append', index = False)
 
-            print "Uploading data to %s"%x
-            _tbl.to_sql(x, con = self.conn)
 
+class BuildPredictions():
+
+    def __init__(self):
+        self.conn = establish_db_connection('sqlalchemy').connect()
+        self.gamedate = datetime.now().date().strftime('%Y-%m-%d')
+
+        self.games_df = assets.games_daily(self.gamedate)
+        self._fetch_agg_stats()
+        self._build_predictions()
+        self._merge_with_spreads()
+        self._clean_merged_data()
+
+    def _fetch_agg_stats(self):
+        stats_list = ['TEAM_ID', 'EFG_PCT', 'FTA_RATE', 'TM_TOV_PCT', 'OREB_PCT',
+                      'OPP_EFG_PCT', 'OPP_FTA_RATE', 'OPP_TOV_PCT', 'OPP_OREB_PCT']
+
+        games_dict = {}
+        for index, row in self.games_df.iterrows():
+            games_dict[row['GAME_ID']] = {'home': row['HOME_TEAM_ID'], 'away': row['VISITOR_TEAM_ID']}
+
+        stats_cols = list(stats_list)
+        stats_cols.append('GAME_ID')
+        stats_cols.append('SIDE')
+
+        games_data = pd.DataFrame(columns = stats_cols)
+
+        for g, t in games_dict.iteritems():
+            home_stats_str = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s'"%(t.get('home'), '002180%%')
+            away_stats_str = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s'"%(t.get('away'), '002180%%')
+
+            for x in ['home_stats_str', 'away_stats_str']:
+                _eval = eval(x)
+                stats_df = pd.read_sql(_eval, con = self.conn)[stats_list]
+                agg_stats = stats_df.groupby(by = ['TEAM_ID'], as_index = False).mean()
+                agg_stats['GAME_ID'] = g
+                agg_stats['SIDE'] = x[0:4]
+                games_data = games_data.append(agg_stats)
+
+        self.agg_stats = games_data
+
+    def _build_predictions(self):
+        self.preds_df = pd.DataFrame(columns = ['game_id', 'away_team_id', 'home_team_id', 'pred_spread'])
+        stats_list = ['SIDE', 'TEAM_ID', 'EFG_PCT', 'FTA_RATE', 'TM_TOV_PCT', 'OREB_PCT',
+                      'OPP_EFG_PCT', 'OPP_FTA_RATE', 'OPP_TOV_PCT', 'OPP_OREB_PCT']
+
+        for g in self.agg_stats['GAME_ID'].unique():
+            curr_game = self.agg_stats[self.agg_stats['GAME_ID'] == g]
+            pred_spread = run_algo(curr_game[stats_list])
+
+            away_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'away')]['TEAM_ID'].item()
+            home_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'home')]['TEAM_ID'].item()
+            curr_game_df = pd.DataFrame(data = {'game_id': [g],
+                                                'away_team_id': away_id,
+                                                'home_team_id': home_id,
+                                                'pred_spread': [pred_spread]})
+
+            self.preds_df = self.preds_df.append(curr_game_df)
+
+    def _merge_with_spreads(self):
+        spreads_str = "SELECT * FROM spreads WHERE date = '%s'"%self.gamedate
+        spreads_df = pd.read_sql(spreads_str, con = self.conn)
+
+        for i in ['home_team_id', 'away_team_id']:
+            self.preds_df[i] = self.preds_df[i].astype(str)
+
+        spreads_df = spreads_df[['date', 'away_team_id', 'home_team_id', 'bovada_line']]
+        self.merged_df = self.preds_df.merge(spreads_df, how = 'left', on = ['home_team_id', 'away_team_id'])
+
+    def _clean_merged_data(self):
+        self.merged_df = self.merged_df.rename(index = str, columns = {'away_team_id':'away_id',
+                                                                       'home_team_id': 'home_id',
+                                                                       'date': 'game_date',
+                                                                       'bovada_line': 'away_spread'})
+        self.merged_df['away_team'] = self.merged_df['away_id'].apply(get_team_from_id)
+        self.merged_df['home_team'] = self.merged_df['home_id'].apply(get_team_from_id)
+
+        self.merged_df['away_spread_str'] = self.merged_df.apply(reformat_vegas_spread, axis = 1)
+        self.merged_df['pred_spread_str'] = self.merged_df.apply(reformat_pred_spread, axis = 1)
+        self.merged_df['away_spread'] = self.merged_df['away_spread'].astype(float)
+        self.merged_df['pred_spread'] = self.merged_df['pred_spread'].round(2)
+
+        self.merged_df['pt_diff'] = self.merged_df['away_spread'] - self.merged_df['pred_spread']
+        self.merged_df['rank'] = self.merged_df.groupby('game_date')['pt_diff'].rank(ascending = False)
+
+        print self.merged_df
+
+def reformat_vegas_spread(row):
+    return "%s (%s)"%(row['away_team'],row['away_spread'])
+
+def reformat_pred_spread(row):
+    row['pred_spread'] = str(round(row['pred_spread'], 1))
+    return "%s (%s)"%(row['away_team'], row['pred_spread'])
+
+def get_team_from_id(team_id):
+    team_abbrv = config.teams['nba_teams'].get(team_id)
+    return team_abbrv
+
+def run_algo(stats):
+    temp_cols = ['TEAM_ID','efg', 'tov', 'orb', 'ftfga']
+
+    stats['efg'] = (stats['EFG_PCT'] - stats['OPP_EFG_PCT'])*100
+    stats['tov'] = (stats['TM_TOV_PCT'] - stats['OPP_TOV_PCT'])*100
+    stats['orb'] = ((100*stats['OREB_PCT']) - (100*stats['OPP_OREB_PCT']))
+    stats['ftfga'] = (stats['FTA_RATE'] - stats['OPP_FTA_RATE'])*100
+
+    away_temp = stats[stats['SIDE'] == 'away'][temp_cols]
+    home_temp = stats[stats['SIDE'] == 'home'][temp_cols]
+    weights_dict = {'efg': 0.4, 'tov': 0.25, 'orb': 0.2, 'ftfga': 0.15}
+
+    algo_dict = {}
+    for s, w in weights_dict.iteritems():
+        algo_dict[s] = (home_temp[s].item() - away_temp[s].item()) * w
+
+    pred_spread = round((sum(algo_dict.values()) * 2) + 2.47, 3)
+
+    return pred_spread
 
 def get_games_list(game_date):
-
     games_df = assets.games_daily(game_date)
-
     games_list = games_df['GAME_ID'].tolist()
-
     return games_list
 
 if __name__ == "__main__":
     MasterUpdate()
+    BuildPredictions()

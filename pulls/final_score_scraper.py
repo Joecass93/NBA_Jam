@@ -28,11 +28,8 @@ if flags.end_date:
 else:
     edate = sdate
 
-
 def main():
-
     date_range = range_all_dates(sdate, edate)
-
     for i, d in enumerate(date_range):
         print "getting scores for %s"%d
         dirty_scores = get_scores(d)
@@ -41,23 +38,19 @@ def main():
 
             try:
                 print "writing scores to db..."
-                write_scores_to_db(clean_scores, 'historical_scores_table', 'sqlalchemy')
+                write_scores_to_db(clean_scores, 'final_scores', 'sqlalchemy')
                 print "scores for %s succesfully written to db!"%d
             except Exception as e:
                 print "db write failed because: %s"%e
-
         else:
             pass
-
         print ""
 
     return None
 
 def get_scores(gamedate):
-
     gamedate = datetime.datetime.strptime(gamedate, '%Y-%m-%d')
     gamedate = gamedate.strftime('%m/%d/%Y')
-
     try:
         scoreboard_url = 'http://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%gamedate
         response = requests.get(scoreboard_url, headers=request_header)
@@ -68,16 +61,12 @@ def get_scores(gamedate):
     except requests.ConnectionError as e:
         print e
 
-    # Check how many games there are today
     scoreboard_len = len(cleaner['rowSet'])
-
-    # Loop through and get each game's info
     games_today = []
     for x in range(0,scoreboard_len):
         game_info = cleaner['rowSet'][x]
         games_today.append(game_info)
 
-    # Create dataframe containing info about today's game
     df_matches = pd.DataFrame(games_today, columns = col_names)
 
     return df_matches
@@ -114,16 +103,11 @@ def format_scores(dirty_scores):
         else:
             clean_scores = clean_scores.append(clean_game)
 
-
-
-
-
     return clean_scores
 
 def write_scores_to_db(scores, sql_table, sql_engine, if_exists = 'append'):
     engine = establish_db_connection(sql_engine)
     conn = engine.connect()
-
     scores.to_sql(name = sql_table, con = conn, if_exists = if_exists, index = False)
     return None
 
