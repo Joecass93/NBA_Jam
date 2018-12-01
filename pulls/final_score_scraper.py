@@ -35,7 +35,6 @@ def main():
         dirty_scores = get_scores(d)
         if len(dirty_scores) > 0:
             clean_scores = format_scores(dirty_scores)
-
             try:
                 print "writing scores to db..."
                 write_scores_to_db(clean_scores, 'final_scores', 'sqlalchemy')

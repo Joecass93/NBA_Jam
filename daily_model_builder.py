@@ -26,6 +26,7 @@ class MasterUpdate():
         self._fetch_game_stats()
         self._fetch_final_scores()
         self._fetch_spreads()
+        self._calculate_results()
         self._update_db()
 
     def _fetch_game_stats(self):
@@ -36,15 +37,24 @@ class MasterUpdate():
         self.scores_df = format_scores(raw_scores)
 
     def _fetch_spreads(self):
-        self.spreads_df = ss.main(self.today)
-        self.spreads_df.drop(columns = ['time'], inplace = True)
-        self.spreads_df['date'] = self.spreads_df['date'].str[0:4] + "-" + self.spreads_df['date'].str[4:6] + "-" + self.spreads_df['date'].str[6:8]
+        spreads_df = ss.main(self.today)
+        spreads_df.drop(columns = ['time'], inplace = True)
+        spreads_df['date'] = spreads_df['date'].str[0:4] + "-" + spreads_df['date'].str[4:6] + "-" + spreads_df['date'].str[6:8]
+        spreads_df['bovada_line'] = np.where((spreads_df['bovada_line'] == 'PK-11') | (spreads_df['bovada_line'] == 'PK-10'),
+                                            "0", spreads_df['bovada_line'])
+        self.spreads_df = spreads_df
+
+    def _calculate_results(self):
+        prev_picks_sql = "SELECT * FROM historical_picks WHERE game_date = '%s'"%self.prev_day
+        self.prev_picks = pd.read_sql(prev_picks_sql, con = self.conn)
+        self.results = result_calculator.determine_results(self.scores_df, self.prev_picks)
 
     def _update_db(self):
         schema = {'four_factors_player': self.player_stats,
                   'four_factors_team': self.team_stats,
                   'final_scores': self.scores_df,
-                  'spreads': self.spreads_df}
+                  'spreads': self.spreads_df,
+                  'results_table': self.results}
 
         for tbl, data in schema.iteritems():
             print "Uploading data to %s"%tbl
@@ -53,15 +63,21 @@ class MasterUpdate():
 
 class BuildPredictions():
 
-    def __init__(self):
+    def __init__(self, gamedate = None):
         self.conn = establish_db_connection('sqlalchemy').connect()
-        self.gamedate = datetime.now().date().strftime('%Y-%m-%d')
+        if gamedate is not None:
+            self.gamedate = gamedate
+        else:
+            self.gamedate = datetime.now().date().strftime('%Y-%m-%d')
 
         self.games_df = assets.games_daily(self.gamedate)
         self._fetch_agg_stats()
         self._build_predictions()
         self._merge_with_spreads()
         self._clean_merged_data()
+
+        self.merged_df.to_sql('daily_picks', con = self.conn, if_exists = 'replace', index = False)
+        self.merged_df.to_sql('historical_picks', con = self.conn, if_exists = 'append', index = False)
 
     def _fetch_agg_stats(self):
         stats_list = ['TEAM_ID', 'EFG_PCT', 'FTA_RATE', 'TM_TOV_PCT', 'OREB_PCT',
@@ -74,13 +90,11 @@ class BuildPredictions():
         stats_cols = list(stats_list)
         stats_cols.append('GAME_ID')
         stats_cols.append('SIDE')
-
         games_data = pd.DataFrame(columns = stats_cols)
 
         for g, t in games_dict.iteritems():
-            home_stats_str = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s'"%(t.get('home'), '002180%%')
-            away_stats_str = "SELECT * FROM four_factors WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s'"%(t.get('away'), '002180%%')
-
+            home_stats_str = "SELECT * FROM four_factors_team WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s' AND GAME_ID < '%s'"%(t.get('home'), g[0:6] + "%%", g)
+            away_stats_str = "SELECT * FROM four_factors_team WHERE TEAM_ID = '%s' AND GAME_ID LIKE '%s' AND GAME_ID < '%s'"%(t.get('away'), g[0:6] + "%%", g)
             for x in ['home_stats_str', 'away_stats_str']:
                 _eval = eval(x)
                 stats_df = pd.read_sql(_eval, con = self.conn)[stats_list]
@@ -99,7 +113,6 @@ class BuildPredictions():
         for g in self.agg_stats['GAME_ID'].unique():
             curr_game = self.agg_stats[self.agg_stats['GAME_ID'] == g]
             pred_spread = run_algo(curr_game[stats_list])
-
             away_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'away')]['TEAM_ID'].item()
             home_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'home')]['TEAM_ID'].item()
             curr_game_df = pd.DataFrame(data = {'game_id': [g],
@@ -120,25 +133,54 @@ class BuildPredictions():
         self.merged_df = self.preds_df.merge(spreads_df, how = 'left', on = ['home_team_id', 'away_team_id'])
 
     def _clean_merged_data(self):
-        self.merged_df = self.merged_df.rename(index = str, columns = {'away_team_id':'away_id',
+        raw_df = self.merged_df.rename(index = str, columns = {'away_team_id':'away_id',
                                                                        'home_team_id': 'home_id',
                                                                        'date': 'game_date',
-                                                                       'bovada_line': 'away_spread'})
-        self.merged_df['away_team'] = self.merged_df['away_id'].apply(get_team_from_id)
-        self.merged_df['home_team'] = self.merged_df['home_id'].apply(get_team_from_id)
+                                                                       'bovada_line': 'vegas_spread'})
 
-        self.merged_df['away_spread_str'] = self.merged_df.apply(reformat_vegas_spread, axis = 1)
-        self.merged_df['pred_spread_str'] = self.merged_df.apply(reformat_pred_spread, axis = 1)
-        self.merged_df['away_spread'] = self.merged_df['away_spread'].astype(float)
-        self.merged_df['pred_spread'] = self.merged_df['pred_spread'].round(2)
+        raw_df['away_team'] = raw_df['away_id'].apply(get_team_from_id)
+        raw_df['home_team'] = raw_df['home_id'].apply(get_team_from_id)
 
-        self.merged_df['pt_diff'] = self.merged_df['away_spread'] - self.merged_df['pred_spread']
-        self.merged_df['rank'] = self.merged_df.groupby('game_date')['pt_diff'].rank(ascending = False)
+        raw_df['vegas_spread_str'] = raw_df.apply(reformat_vegas_spread, axis = 1)
+        raw_df['pred_spread_str'] = raw_df.apply(reformat_pred_spread, axis = 1)
+        raw_df['pred_spread_str'] = np.where(raw_df['pred_spread_str'].str.contains("-"),
+                                             raw_df['pred_spread_str'],
+                                             raw_df['pred_spread_str'].str.replace("(", "(+"))
+        raw_df['vegas_spread'] = raw_df['vegas_spread'].astype(float)
+        raw_df['pred_spread'] = raw_df['pred_spread'].round(2)
 
-        print self.merged_df
+        raw_df['pt_diff'] = raw_df['vegas_spread'] - raw_df['pred_spread']
+        raw_df['abs_pt_diff'] = raw_df['pt_diff'].abs()
+        raw_df['best_bet'] = np.where(raw_df['abs_pt_diff'] > 3.50, 'Y', 'N')
+        gdate = raw_df['game_date'].max()
+        raw_df['rank'] = (raw_df.groupby('game_date')['abs_pt_diff'].rank(ascending = False)).astype(int)
+        raw_df.drop(columns = ['abs_pt_diff'], inplace = True)
+        raw_df.sort_values(by = ['rank'], inplace = True)
+
+        raw_df['game_date'] = gdate
+        self.merged_df = raw_df
+        self._make_pick()
+
+    def _make_pick(self):
+        df = self.merged_df
+        df['pick_team'] = np.where(df['vegas_spread'] < df['pred_spread'],
+                                   df['home_team'],
+                                   df['away_team'])
+        df['spread_str'] = df['vegas_spread'].astype(str)
+        df['spread_str'] = np.where(df['pick_team'] == df['away_team'],
+                                    np.where(df['spread_str'].str.contains("-"),
+                                             df['spread_str'],
+                                             "+" + df['spread_str']),
+                                    np.where(df['spread_str'].str.contains("-"),
+                                             df['spread_str'].str.replace("-", "+"),
+                                             "-" + df['spread_str']))
+
+        df['pick_str'] = df['pick_team'] + " (" + df['spread_str'] + ")"
+        df.drop(columns = ['pick_team', 'spread_str'], inplace = True)
+        self.merged_df = df
 
 def reformat_vegas_spread(row):
-    return "%s (%s)"%(row['away_team'],row['away_spread'])
+    return "%s (%s)"%(row['away_team'],row['vegas_spread'])
 
 def reformat_pred_spread(row):
     row['pred_spread'] = str(round(row['pred_spread'], 1))
@@ -158,7 +200,7 @@ def run_algo(stats):
 
     away_temp = stats[stats['SIDE'] == 'away'][temp_cols]
     home_temp = stats[stats['SIDE'] == 'home'][temp_cols]
-    weights_dict = {'efg': 0.4, 'tov': 0.25, 'orb': 0.2, 'ftfga': 0.15}
+    weights_dict = {'efg': 0.40, 'tov': 0.25, 'orb': 0.20, 'ftfga': 0.15}
 
     algo_dict = {}
     for s, w in weights_dict.iteritems():
@@ -174,5 +216,5 @@ def get_games_list(game_date):
     return games_list
 
 if __name__ == "__main__":
-    MasterUpdate()
+    #MasterUpdate()
     BuildPredictions()
