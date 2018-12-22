@@ -216,5 +216,5 @@ def get_games_list(game_date):
     return games_list
 
 if __name__ == "__main__":
-    #MasterUpdate()
+    MasterUpdate()
     BuildPredictions()

@@ -49,37 +49,22 @@ def games_daily(gamedate): ## Get dataframe containing basic information about N
 ## Get list of game_ids for each game played by a team up to a specified point in seasons (not including the defined date)
 # Enter date as string YYYY-MM-DD
 def list_games(team_id, date, start_date = None):
-	## Transform date from string
 	clean_date = datetime.strptime(date, '%Y-%m-%d').date()
-
-	# Get games from db
 	engine = establish_db_connection('sqlalchemy')
 	conn = engine.connect()
 	data = pd.read_sql("SELECT * FROM final_scores", con = conn)
-
-	## Replace this with some intelligent method of knowing the start date of the season in which the user-inputed date exists
 	if start_date is None:
 		start_date = '2018-10-16'
 
 	start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-	data = data[data['GAME_DATE_EST'] >= start_date]
+	data = data[data['game_date'] >= start_date]
+	trunc_data = data[data['game_date'] < clean_date]
+	trunc_data['away_id'] = trunc_data['away_id'].astype(str)
+	trunc_data['home_id'] = trunc_data['home_id'].astype(str)
+	team_data = trunc_data[(trunc_data['away_id'] == team_id) | (trunc_data['home_id'] == team_id)].copy()
+	games_list = team_data['game_id'].tolist()
 
-	## Limit data based on specified date
-	trunc_data = data[data['GAME_DATE_EST'] < clean_date]
-
-	## Limit data to just the selected team
-	trunc_data['TEAM_ID'] = trunc_data.TEAM_ID.astype(str)
-	team_data = trunc_data[trunc_data['TEAM_ID'] == team_id]
-
-	games_list = team_data['GAME_ID'].tolist()
-
-	today_game = data[(data['GAME_DATE_EST'] == clean_date) & (data['TEAM_ID'] == int(team_id))]
-	if len(today_game) > 0:
-		curr_game = today_game['GAME_ID'].item()
-	else:
-		curr_game = None
-
-	return games_list, curr_game
+	return games_list
 
 def season_from_date_str(gamedate):
 
@@ -111,6 +96,14 @@ def season_from_date_str(gamedate):
 
 def round_to_nearest(x, base):
 	return int(base * round(float(x)/base))
+
+def upload_to_db(data, tbl, append = False):
+	conn = establish_db_connection('sqlalchemy').connect()
+	if append == True:
+		data.to_sql(tbl, con = conn, if_exists = 'append', index = False)
+	else:
+		data.to_sql(tbl, con = conn, if_exists = 'replace', index = False)
+
 
 if __name__ == "__main__":
 	main()

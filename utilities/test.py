@@ -14,7 +14,7 @@ import result_calculator
 home_dir = expanduser("~")
 syspath = '%s/projects/NBA_Jam/'%home_dir
 sys.path.insert(0,syspath)
-from pulls import four_factors_scraper
+from pulls import spreads_scraper
 from utilities import db_connection_manager
 
 
@@ -22,7 +22,9 @@ engine = db_connection_manager.establish_db_connection('sqlalchemy')
 conn = engine.connect()
 
 ## get list of all games from 2017-18 season
-full_season = pd.read_sql("SELECT * FROM flatten_final_scores WHERE game_id LIKE '002160%%'", con = conn)
-games_list = full_season['game_id'].tolist()
+for d in range_all_dates("2018-12-19", "2018-12-19"):
+    df = spreads_scraper.main(d)
+    df.drop(columns = ['time'], inplace = True)
+    df['date'] = df['date'].str[0:4] + "-" + df['date'].str[4:6] + "-" + df['date'].str[6:8]
 
-four_factors_scraper.player_stats(games_list = games_list)
+    df.to_sql('spreads', con = conn, if_exists = 'append', index = False)

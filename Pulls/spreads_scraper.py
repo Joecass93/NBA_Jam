@@ -5,6 +5,8 @@ import requests
 import datetime
 from datetime import date, timedelta
 import time
+import sys
+sys.path.insert(0, "/Users/joe/projects/NBA_Jam/")
 from utilities.config import spread_teams
 #from config import spread_teams
 

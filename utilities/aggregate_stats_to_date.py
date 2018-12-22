@@ -1,76 +1,49 @@
 import pandas as pd
-import numpy as np
 from datetime import datetime, date
-from assets import list_games
+from assets import upload_to_db, range_all_dates, list_games
 from config import teams
 from db_connection_manager import establish_db_connection
 
-def get_season_agg(team_id, season_num):
+class AggregateTeamStats():
 
-    conn = establish_db_connection('sqlalchemy').connect()
+    def __init__(self, start_date, end_date):
+        self.conn = establish_db_connection('sqlalchemy').connect()
+        self.start_date = start_date
+        self.end_date = end_date
 
-    ## get all game_ids for a team in the given season
-
-    games_sql = 'SELECT GAME_ID FROM final_scores WHERE TEAM_ID = "%s" and GAME_ID LIKE "%s"'%(team_id, season_num + "0%%")
-    games_data = pd.read_sql(games_sql, con = conn)
-    games_list = list(games_data['GAME_ID'])
-
-    for g in games_list[1:]:
-        aggregate_stats(team_id, to_gameid = g)
-
-    return games_list
-
-def aggregate_stats(team_id, to_date = None, to_gameid = None):
-
-    ## get team name for logging etc..
-    team_name = teams['nba_teams'].get(team_id)
-    print team_name
+        self.team_dict = teams.get('nba_teams')
+        for id, team in self.team_dict.iteritems():
+            print "Aggregating stats for %s"%team
+            self._fetch_raw_stats(id)
+            print "Uploaded aggregate stats for %s to db"%team
+            print ""
 
 
-    conn = establish_db_connection('sqlalchemy').connect()
+    def _fetch_raw_stats(self, id):
+        games_played = list_games(id, self.end_date, self.start_date)
+        print games_played
+        sql_fields = ['TEAM_ID', 'GAME_ID', 'EFG_PCT', 'FTA_RATE', 'TM_TOV_PCT', 'OREB_PCT', 'OPP_EFG_PCT',
+                      'OPP_FTA_RATE', 'OPP_TOV_PCT', 'OPP_OREB_PCT']
+        sql_str = 'SELECT %s FROM four_factors_team WHERE TEAM_ID = %s and GAME_ID IN ("%s")'%(", ".join(sql_fields), id, '", "'.join(games_played))
 
-    ## First check if the team has a game on the date listed
-    if to_gameid:
-        print "Aggregating stats for %s from start of season up to game_id: %s...."%(team_name, to_gameid)
-        start_id = to_gameid[0:4] + "00001"
-        ff_sql = "SELECT * FROM four_factors WHERE TEAM_ID = %s and GAME_ID < %s and GAME_ID > %s"%(team_id, to_gameid, start_id)
-        ff_data = pd.read_sql(ff_sql, con = conn)
-        curr_game = to_gameid
+        raw_stats = pd.read_sql(sql_str, con = self.conn)
+        agg_cols = sql_fields.append("as_of")
+        agg_stats = pd.DataFrame(columns = agg_cols)
+        for i, g in enumerate(games_played):
+            if i != 0:
+                rolling_games = raw_stats[raw_stats['GAME_ID'] < g].copy()
+                rolling_games.drop(['GAME_ID'], axis = 1, inplace = True)
+                rolling_avg = rolling_games.groupby(['TEAM_ID'], as_index = False).mean()
 
-    else:
+                rolling_avg['as_of'] = g
+                agg_stats = agg_stats.append(rolling_avg)
 
-        game_today_sql = "SELECT GAME_ID FROM final_scores WHERE GAME_DATE_EST = '%s' AND TEAM_ID = '%s'"%(to_date, team_id)
-        game_today = pd.read_sql(game_today_sql, con = conn)
-
-        if len(game_today) > 0:
-            print "Aggregating stats for %s from start of season up to %s...."%(team_name, to_date)
-            game_today = game_today['GAME_ID'].item()
-            games_list, curr_game = list_games(team_id, to_date)
-            games_str = "', '".join(games_list)
-
-            ## get records for all games
-            ff_sql = "SELECT * FROM four_factors WHERE TEAM_ID = %s AND GAME_ID IN ('%s')"%(team_id, games_str)
-            ff_data = pd.read_sql(ff_sql, con = conn)
-
-        else:
-            print "No game for %s on %s, please try a new date..."%(team_name, to_date)
-
-            return None
+                self._upload_to_db(agg_stats)
 
 
+    def _upload_to_db(self, stats):
+        stats.to_sql('four_factors_thru', con = self.conn, if_exists = 'append', index = False)
 
-    ## aggregate stats
-    #  replace game ids with the id for the current game
-    ff_data['GAME_ID'] = curr_game
-    agg_stats = ff_data.groupby(by = ['TEAM_ID', 'GAME_ID']).mean().reset_index()
-
-    agg_stats['TEAM'] = team_name
-
-    print "Storing data in four_factors_thru..."
-    agg_stats.to_sql('four_factors_thru', con = conn, if_exists = 'append')
-
-
-    return agg_stats
 
 if __name__ == "__main__":
-    aggregate_stats()
+    AggregateTeamStats('2018-10-20', '2018-10-31')
