@@ -13,92 +13,79 @@ from utilities.db_connection_manager import establish_db_connection
 import re
 
 
-def main():
+class DailyPicksEmail():
 
-    ## get today's date
-    today = datetime.now().date().strftime("%m/%d/%Y")
+    def __init__(self):
+        self.creds = {}
+        with open('/Users/joe/Documents/picks_email_login.txt') as f:
+            for line in f:
+                k = line.split(' ')[0]
+                v = line.split(' ')[1].rstrip()
+                self.creds[k] = v
+        self.conn = establish_db_connection('sqlalchemy').connect()
+        self.today = datetime.now().date().strftime("%m/%d/%Y")
+        self.subject = "NBA Rundown for %s"%self.today
+        self.degenerates = list(email_config.degenerates.values())
 
-    conn = establish_db_connection('sqlalchemy').connect()
-    picks_df = pd.read_sql("SELECT rank, away_team, home_team, vegas_spread, pred_spread_str, pick_str, best_bet FROM daily_picks", con = conn)
+        self._fetch_picks()
 
-    ## clean up the table
-    cols_clean = ["Rank", "Away", "Home", "Spread", "Predicted Spread", "Pick", "Best Bet"]
-    picks_df.columns = cols_clean
+    def _fetch_picks(self):
+        picks_sql = "SELECT rank AS Rank, away_team AS Away, home_team AS Home, vegas_spread AS Spread, pred_spread_str AS `Predicted Spread`, pick_str AS Pick, best_bet AS `Best Bet` FROM daily_picks"
+        self.picks = pd.read_sql(picks_sql, con = self.conn)
+        self._clean_picks()
 
-    picks_df = picks_df.sort_values(['Rank'])
-    picks_df['Rank']  = picks_df['Rank'].astype(np.int64)
-    picks_df['Spread'] = np.where(picks_df['Spread'] > 0,
-                                  picks_df['Away'] + " (+" + picks_df['Spread'].astype(str) + ")",
-                                  picks_df['Away'] + " (" + picks_df['Spread'].astype(str) + ")")
-    picks_df['Best Bet'] = np.where(picks_df['Best Bet'] == "Y", "Yes", "No")
+    def _clean_picks(self):
+        self.picks.sort_values(['Rank'], inplace = True)
+        self.picks['Rank'] = self.picks['Rank'].astype(np.int64)
+        self.picks['Spread'] = np.where(self.picks['Spread'] > 0,
+                                        self.picks['Away'] + " (+" + self.picks['Spread'].astype(str) + ")",
+                                        self.picks['Away'] + " (" + self.picks['Spread'].astype(str) + ")")
 
-    # report_cols = {'rank':'Rank', 'away_team':'Away', 'home_team':'Home',
-    #                'vegas_spread':'Spread', 'pred_spread_str':'Predicted Away Spread',
-    #                'pick_str':'Pick', 'best_bet':'Best Bet'
-    #                }
+        self.picks['Best Bet'] = np.where(self.picks['Best Bet'] == "Y", "Yes", "No")
+        self._build_email()
 
-    ## get list of fields to include in the email
-    #report_df = picks_df[list(report_cols.keys())]
-    print picks_df
+    def _build_email(self):
+        body_html = """\
+        <html>
+            <head>
+            </head>
+            <body>
+                <p>Free money, the {td} edition ;)</p>
+                <br></br>
+                <p>
+                    {picks}
+                </p>
+                <br></br>
+            </body>
+        </html>
+        """
 
-    ## get list of email recepients
-    degenerates = list(email_config.degenerates.values())
+        html_picks = self.picks.to_html(justify = 'center', index = False)
+        html_picks = re.sub("<th>", "<th width = '100px'; color = black, bgcolor = lightgray>", html_picks)
+        html_picks = re.sub("<td>", "<td align = 'center'>", html_picks)
+        self.body_html = body_html.format(picks = html_picks, td = self.today)
+        self._send_email()
 
-	## build email in html
-    body_html = """\
-    <html>
-        <head>
-        <style>
-        </style>
-        </head>
-        <body>
-            <p>Merry X-mas ya filthy animals ;)</p>
-            <br></br>
-            <p>
-                {acct_table}
-            </p>
-            <br></br>
-        </body>
-    </html>
-    """
+    def _send_email(self):
 
-    report_df_html = picks_df.to_html(justify = 'center', index = False)
-    report_df_html = re.sub("<th>", "<th width = '100px'; color = black, bgcolor = lightgray>", report_df_html)
-    report_df_html = re.sub("<td>", "<td align = 'center'>", report_df_html)
-
-    body_html = body_html.format(acct_table = report_df_html)
-
-    ## build subject line based on date range
-    subject = "NBA Rundown for %s"%today
-    print subject
-
-    ## details
-    fromaddr = "joecass93@gmail.com"
-    toaddr = degenerates
-    msg = MIMEMultipart()
-    msg['From'] = fromaddr
-    msg['To'] = ", ".join(degenerates)
-    msg['Subject'] = subject
-
-    ##
-    msg.attach(MIMEText(body_html, 'html'))
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(fromaddr, "Steelers93!")
-    text = msg.as_string()
-
-	## send da email!
-    try:
-        server.sendmail(fromaddr, toaddr, text)
-        print "Daily picks email for %s successfully sent to: %s"%(today, msg['To'])
-        print ""
-    except Exception as e:
-        print "Warning! Email alert did not send because: %s"%e
-
-    server.quit()
-
-    return None
-
+        fromaddr = self.creds['user']
+        toaddr = self.degenerates
+        msg = MIMEMultipart()
+        msg['From'] = fromaddr
+        msg['To'] = ", ".join(self.degenerates)
+        msg['Subject'] = self.subject
+        msg.attach(MIMEText(self.body_html, 'html'))
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(fromaddr, self.creds['pw'])
+        text = msg.as_string()
+        try:
+            server.sendmail(fromaddr, toaddr, text)
+            print "Daily picks email for %s successfully sent to: %s"%(self.today, msg['To'])
+            print ""
+        except Exception as e:
+            print "Warning! Email alert did not send because: %s"%e
+        server.quit()
 
 if __name__ == "__main__":
-    main()
+    DailyPicksEmail()
