@@ -16,12 +16,7 @@ import re
 class DailyPicksEmail():
 
     def __init__(self):
-        self.creds = {}
-        with open('/Users/joe/Documents/picks_email_login.txt') as f:
-            for line in f:
-                k = line.split(' ')[0]
-                v = line.split(' ')[1].rstrip()
-                self.creds[k] = v
+        self.creds = email_config._get_email_creds()
         self.conn = establish_db_connection('sqlalchemy').connect()
         self.today = datetime.now().date().strftime("%m/%d/%Y")
         self.subject = "NBA Rundown for %s"%self.today
@@ -59,7 +54,6 @@ class DailyPicksEmail():
             </body>
         </html>
         """
-
         html_picks = self.picks.to_html(justify = 'center', index = False)
         html_picks = re.sub("<th>", "<th width = '100px'; color = black, bgcolor = lightgray>", html_picks)
         html_picks = re.sub("<td>", "<td align = 'center'>", html_picks)

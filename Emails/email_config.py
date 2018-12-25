@@ -13,3 +13,12 @@ degenerates = {'TJ Wilson':'wilsontj28@gmail.com',
                'anuemman': 'aneumann23@gmail.com',
                'Cody Sharib': 'cody.sharib@gmail.com'
                }
+def _get_email_creds():
+    creds = {}
+    with open('/Users/joe/Documents/picks_email_login.txt') as f:
+        for line in f:
+            k = line.split(' ')[0]
+            v = line.split(' ')[1].rstrip()
+            creds[k] = v
+
+    return creds
