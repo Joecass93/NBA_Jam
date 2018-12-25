@@ -6,9 +6,8 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 from os.path import expanduser
 import email_config
-home_dir = expanduser("~")
 import sys
-sys.path.insert(0, "%s/projects/NBA_Jam/"%home_dir)
+sys.path.insert(0, "%s/projects/NBA_Jam/"%expanduser("~"))
 from utilities.db_connection_manager import establish_db_connection
 import re
 

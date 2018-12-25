@@ -5,6 +5,7 @@ from utilities.db_connection_manager import establish_db_connection
 from utilities import assets, result_calculator, config, four_factors_scraper, aggregate_stats_to_date
 from pulls import final_score_scraper
 from pulls import spreads_scraper as ss
+from algo_master import RunAlgo
 import requests, json
 
 pd.options.mode.chained_assignment = None
@@ -78,8 +79,9 @@ class BuildPredictions():
         self._merge_with_spreads()
         self._clean_merged_data()
 
-        self.merged_df.to_sql('daily_picks', con = self.conn, if_exists = 'replace', index = False)
-        self.merged_df.to_sql('historical_picks', con = self.conn, if_exists = 'append', index = False)
+        print self.merged_df
+        # self.merged_df.to_sql('daily_picks', con = self.conn, if_exists = 'replace', index = False)
+        # self.merged_df.to_sql('historical_picks', con = self.conn, if_exists = 'append', index = False)
 
     def _fetch_agg_stats(self):
         stats_list = ['TEAM_ID', 'EFG_PCT', 'FTA_RATE', 'TM_TOV_PCT', 'OREB_PCT',
@@ -114,7 +116,9 @@ class BuildPredictions():
 
         for g in self.agg_stats['GAME_ID'].unique():
             curr_game = self.agg_stats[self.agg_stats['GAME_ID'] == g]
-            pred_spread = run_algo(curr_game[stats_list])
+
+            pred_spread = RunAlgo(curr_game[stats_list], "standard_algo")._standard_algo()
+
             away_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'away')]['TEAM_ID'].item()
             home_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'home')]['TEAM_ID'].item()
             curr_game_df = pd.DataFrame(data = {'game_id': [g],
@@ -191,26 +195,6 @@ def reformat_pred_spread(row):
 def get_team_from_id(team_id):
     team_abbrv = config.teams['nba_teams'].get(team_id)
     return team_abbrv
-
-def run_algo(stats):
-    temp_cols = ['TEAM_ID','efg', 'tov', 'orb', 'ftfga']
-
-    stats['efg'] = (stats['EFG_PCT'] - stats['OPP_EFG_PCT'])*100
-    stats['tov'] = (stats['TM_TOV_PCT'] - stats['OPP_TOV_PCT'])*100
-    stats['orb'] = ((100*stats['OREB_PCT']) - (100*stats['OPP_OREB_PCT']))
-    stats['ftfga'] = (stats['FTA_RATE'] - stats['OPP_FTA_RATE'])*100
-
-    away_temp = stats[stats['SIDE'] == 'away'][temp_cols]
-    home_temp = stats[stats['SIDE'] == 'home'][temp_cols]
-    weights_dict = {'efg': 0.40, 'tov': 0.25, 'orb': 0.20, 'ftfga': 0.15}
-
-    algo_dict = {}
-    for s, w in weights_dict.iteritems():
-        algo_dict[s] = (home_temp[s].item() - away_temp[s].item()) * w
-
-    pred_spread = round((sum(algo_dict.values()) * 2) + 2.47, 3)
-
-    return pred_spread
 
 def get_games_list(game_date):
     games_df = assets.games_daily(game_date)
