@@ -1,11 +1,8 @@
 library(RMySQL)
-library(e1071)
 library(data.table)
 library(dplyr)
 library(tidyverse)
 library(caret)
-library(leaps)
-library(MASS)
 
 #### Import Data ####
 conn <- dbConnect(MySQL(), 
@@ -25,17 +22,11 @@ merged <- merge(results, agg_stats, by.x = c("game_id", "home_id"), by.y = c("as
 merged <- merge(merged, agg_stats, by.x = c("game_id", "away_id"), by.y = c("as_of","TEAM_ID"), all.x = TRUE, suffixes = c("_home", "_away"))
 
 ## seperate into training (2011-2017) and testing data (2018) 
-algo_test = merged[merged$game_id %like% "002180", ]
-algo_train = merged[!(merged$game_id %like% "002180"), ]
+test_merged = merged[merged$game_id %like% "002180", ]
+train_merged = merged[!(merged$game_id %like% "002180"), ]
 ## remove unnecessary columns from data
 drops <- c("as_of_away", "as_of_home", "away_id", "home_id", "game_date", "sequence", "game_id",
            "away_team", "home_team", "pt_diff_away", "pts_home", "pts_away", "pts_total", "win_side", "win_id")
-
-lapply(list(algo_test, algo_train), function(a) {a = na.omit(a[, !(names(a) %in% drops)]) ; a})
-
-for (a in list(algo_test, algo_train)){
-  na.omit(a[, !(names(a) %in% drops)])
-}
 algo_test <- na.omit(test_merged[, !(names(test_merged) %in% drops)])
 algo_train <- na.omit(train_merged[, !(names(train_merged) %in% drops)])
 
@@ -52,7 +43,7 @@ for (stat in names(algo_train)){
 }
 
 ## build ze linear models
-linearMod <- lm(final_spread ~ EFG_PCT_home + FTA_RATE_home + TM_TOV_PCT_home + OREB_PCT_home + OPP_EFG_PCT_home + OPP_FTA_RATE_home + OPP_TOV_PCT_home + OPP_OREB_PCT_home + EFG_PCT_away + FTA_RATE_away + TM_TOV_PCT_away + OREB_PCT_away + OPP_EFG_PCT_away + OPP_FTA_RATE_away + OPP_TOV_PCT_away + OPP_OREB_PCT_away + b2b_home + b2b_away, data = algo_train)
+linearMod <- lm(final_spread ~ EFG_PCT_home + FTA_RATE_home + TM_TOV_PCT_home + OREB_PCT_home + OPP_EFG_PCT_home + OPP_FTA_RATE_home + OPP_TOV_PCT_home + OPP_OREB_PCT_home + EFG_PCT_away + FTA_RATE_away + TM_TOV_PCT_away + OREB_PCT_away + OPP_EFG_PCT_away + OPP_FTA_RATE_away + OPP_TOV_PCT_away + OPP_OREB_PCT_away, data = algo_train)
 full.model <- lm(final_spread ~ ., data = algo_train)
 summary(full.model)
 

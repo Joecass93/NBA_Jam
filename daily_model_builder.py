@@ -75,13 +75,13 @@ class BuildPredictions():
 
         self.games_df = assets.games_daily(self.gamedate)
         self._fetch_agg_stats()
+        self._determine_b2b()
         self._build_predictions()
         self._merge_with_spreads()
         self._clean_merged_data()
 
-        print self.merged_df
-        # self.merged_df.to_sql('daily_picks', con = self.conn, if_exists = 'replace', index = False)
-        # self.merged_df.to_sql('historical_picks', con = self.conn, if_exists = 'append', index = False)
+        self.merged_df.to_sql('daily_picks', con = self.conn, if_exists = 'replace', index = False)
+        self.merged_df.to_sql('historical_picks', con = self.conn, if_exists = 'append', index = False)
 
     def _fetch_agg_stats(self):
         stats_list = ['TEAM_ID', 'EFG_PCT', 'FTA_RATE', 'TM_TOV_PCT', 'OREB_PCT',
@@ -109,15 +109,24 @@ class BuildPredictions():
 
         self.agg_stats = games_data
 
+    def _determine_b2b(self):
+        prev_sql = "SELECT away_id, home_id FROM final_scores WHERE game_date = '%s'"%(datetime.strptime(self.gamedate, "%Y-%m-%d") - timedelta(2)).date()
+        prev_df = pd.read_sql(prev_sql, con = self.conn)
+        prev_teams = [x for x in prev_df['away_id'].unique()]
+        for h in prev_df['home_id'].unique():
+            prev_teams.append(h)
+        self.agg_stats['b2b'] = np.where(self.agg_stats['TEAM_ID'].isin(prev_teams), "Yes", "No")
+
     def _build_predictions(self):
         self.preds_df = pd.DataFrame(columns = ['game_id', 'away_team_id', 'home_team_id', 'pred_spread'])
         stats_list = ['SIDE', 'TEAM_ID', 'EFG_PCT', 'FTA_RATE', 'TM_TOV_PCT', 'OREB_PCT',
-                      'OPP_EFG_PCT', 'OPP_FTA_RATE', 'OPP_TOV_PCT', 'OPP_OREB_PCT']
+                      'OPP_EFG_PCT', 'OPP_FTA_RATE', 'OPP_TOV_PCT', 'OPP_OREB_PCT', 'b2b']
 
         for g in self.agg_stats['GAME_ID'].unique():
             curr_game = self.agg_stats[self.agg_stats['GAME_ID'] == g]
 
-            pred_spread = RunAlgo(curr_game[stats_list], "standard_algo")._standard_algo()
+            pred_spread = RunAlgo(curr_game[stats_list])._standard_algo()
+            # pred_spread = RunAlgo(curr_game[stats_list])._linear_regression_algo()
 
             away_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'away')]['TEAM_ID'].item()
             home_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'home')]['TEAM_ID'].item()
@@ -200,5 +209,5 @@ def get_games_list(game_date):
     return games_df['GAME_ID'].tolist()
 
 if __name__ == "__main__":
-    # MasterUpdate()
+    MasterUpdate()
     BuildPredictions()
