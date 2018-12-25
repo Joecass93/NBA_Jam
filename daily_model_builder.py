@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime, date, timedelta
 from utilities.db_connection_manager import establish_db_connection
 from utilities import assets, result_calculator, config, four_factors_scraper
-from pulls.final_score_scraper import get_scores, format_scores
+from pulls import final_score_scraper
 from pulls import spreads_scraper as ss
 import requests, json
 
@@ -33,8 +33,9 @@ class MasterUpdate():
         self.player_stats, self.team_stats = four_factors_scraper._fetch_game_stats(self.prev_day)
 
     def _fetch_final_scores(self):
-        raw_scores = get_scores(self.prev_day)
-        self.scores_df = format_scores(raw_scores)
+        final_score_scraper()
+        scores_sql = "SELECT * FROM final_scores WHERE game_date = '%s'"%self.prev_day
+        self.scores_df = pd.read_sql(scores_sql, con = self.conn)
 
     def _fetch_spreads(self):
         spreads_df = ss.main(self.today)
@@ -59,7 +60,6 @@ class MasterUpdate():
         for tbl, data in schema.iteritems():
             print "Uploading data to %s"%tbl
             data.to_sql(tbl, con = self.conn, if_exists = 'append', index = False)
-
 
 class BuildPredictions():
 
