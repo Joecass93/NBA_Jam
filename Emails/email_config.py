@@ -20,5 +20,4 @@ def _get_email_creds():
             k = line.split(' ')[0]
             v = line.split(' ')[1].rstrip()
             creds[k] = v
-
     return creds
