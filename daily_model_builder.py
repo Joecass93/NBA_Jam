@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, date, timedelta
 from utilities.db_connection_manager import establish_db_connection
-from utilities import assets, result_calculator, config, four_factors_scraper
+from utilities import assets, result_calculator, config, four_factors_scraper, aggregate_stats_to_date
 from pulls import final_score_scraper
 from pulls import spreads_scraper as ss
 import requests, json
@@ -28,6 +28,8 @@ class MasterUpdate():
         self._fetch_spreads()
         self._calculate_results()
         self._update_db()
+
+        aggregate_stats_to_date(self.prev_day, self.prev_day)
 
     def _fetch_game_stats(self):
         self.player_stats, self.team_stats = four_factors_scraper._fetch_game_stats(self.prev_day)
@@ -216,5 +218,5 @@ def get_games_list(game_date):
     return games_list
 
 if __name__ == "__main__":
-    MasterUpdate()
+    # MasterUpdate()
     BuildPredictions()

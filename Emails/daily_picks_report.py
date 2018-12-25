@@ -52,7 +52,7 @@ def main():
         </style>
         </head>
         <body>
-            <p>Free money for {td} ;)</p>
+            <p>Merry X-mas ya filthy animals ;)</p>
             <br></br>
             <p>
                 {acct_table}
@@ -66,7 +66,7 @@ def main():
     report_df_html = re.sub("<th>", "<th width = '100px'; color = black, bgcolor = lightgray>", report_df_html)
     report_df_html = re.sub("<td>", "<td align = 'center'>", report_df_html)
 
-    body_html = body_html.format(acct_table = report_df_html, td = today)
+    body_html = body_html.format(acct_table = report_df_html)
 
     ## build subject line based on date range
     subject = "NBA Rundown for %s"%today
@@ -84,7 +84,7 @@ def main():
     msg.attach(MIMEText(body_html, 'html'))
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
-    server.login(fromaddr, "Cassidy93")
+    server.login(fromaddr, "Steelers93!")
     text = msg.as_string()
 
 	## send da email!

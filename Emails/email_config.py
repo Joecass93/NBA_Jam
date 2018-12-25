@@ -10,5 +10,6 @@ degenerates = {'TJ Wilson':'wilsontj28@gmail.com',
                'Sam Slater':'Sfslater12@gmail.com',
                'Max Feigenbaum':'Maxfeig@gmail.com',
                'Louis Beck':'louis.beck12@gmail.com',
-               'anuemman': 'aneumann23@gmail.com'
+               'anuemman': 'aneumann23@gmail.com',
+               'Cody Sharib': 'cody.sharib@gmail.com'
                }

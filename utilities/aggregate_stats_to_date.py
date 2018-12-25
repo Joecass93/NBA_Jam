@@ -49,4 +49,4 @@ class AggregateTeamStats():
         self.team_dict = teams.get('nba_teams')
 
 if __name__ == "__main__":
-    AggregateTeamStats('2018-10-16', '2018-12-21')
+    AggregateTeamStats('2018-12-21', '2018-12-23')

@@ -17,27 +17,27 @@ sys.path.insert(0,syspath)
 from pulls import spreads_scraper
 from utilities import db_connection_manager
 
+### USE THIS TO SCRAPE SPREADS AND UPLOAD TO DB, AD HOC ###
+engine = db_connection_manager.establish_db_connection('sqlalchemy')
+conn = engine.connect()
 
-# engine = db_connection_manager.establish_db_connection('sqlalchemy')
-# conn = engine.connect()
+for d in range_all_dates("2018-12-25", "2018-12-25"):
+    df = spreads_scraper.main(d)
+    df.drop(columns = ['time'], inplace = True)
+    df['date'] = df['date'].str[0:4] + "-" + df['date'].str[4:6] + "-" + df['date'].str[6:8]
+
+    df.to_sql('spreads', con = conn, if_exists = 'append', index = False)
+
+#### MISC TEST FUNCTIONS ####
+# class Test():
 #
-# ## get list of all games from 2017-18 season
-# for d in range_all_dates("2018-12-19", "2018-12-19"):
-#     df = spreads_scraper.main(d)
-#     df.drop(columns = ['time'], inplace = True)
-#     df['date'] = df['date'].str[0:4] + "-" + df['date'].str[4:6] + "-" + df['date'].str[6:8]
+#     def __init__(self, *dates):
 #
-#     df.to_sql('spreads', con = conn, if_exists = 'append', index = False)
-
-class Test():
-
-    def __init__(self, *dates):
-
-        self.config(dates)
-
-    def config(self, *dates):
-        for d in dates:
-            print d[1]
-
-if __name__ == "__main__":
-    Test('test1', 'test2')
+#         self.config(dates)
+#
+#     def config(self, *dates):
+#         for d in dates:
+#             print d[1]
+#
+# if __name__ == "__main__":
+#     Test('test1', 'test2')

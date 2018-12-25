@@ -78,7 +78,7 @@ def _get_games_list(game_date):
 
 def _upload_to_db(table, db_tbl):
     conn = establish_db_connection('sqlalchemy').connect()
-    table.to_sql(db_tbl, con = conn, if_exists = 'append', index = False)
+    # table.to_sql(db_tbl, con = conn, if_exists = 'append', index = False)
     return None
 
 if __name__ == "__main__":
