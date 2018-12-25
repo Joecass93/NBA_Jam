@@ -193,13 +193,11 @@ def reformat_pred_spread(row):
     return "%s (%s)"%(row['away_team'], row['pred_spread'])
 
 def get_team_from_id(team_id):
-    team_abbrv = config.teams['nba_teams'].get(team_id)
-    return team_abbrv
+    return config.teams['nba_teams'].get(team_id)
 
 def get_games_list(game_date):
     games_df = assets.games_daily(game_date)
-    games_list = games_df['GAME_ID'].tolist()
-    return games_list
+    return games_df['GAME_ID'].tolist()
 
 if __name__ == "__main__":
     # MasterUpdate()
