@@ -67,7 +67,7 @@ def determine_results(game_scores, game_picks):
         return None
 
     game_scores = game_scores.drop(columns = ['away_id', 'home_id', 'home_team',
-                                              'away_team', 'game_date', 'sequence'])
+                                              'away_team', 'game_date'])
     merged_game_data = pd.merge(game_scores, game_picks, how = 'left', on = 'game_id')
     merged_game_data['vegas_spread'] = pd.to_numeric(merged_game_data['vegas_spread_str'].str[5:9], errors = 'coerce')
     merged_game_data['side_favored'] = np.where(merged_game_data['vegas_spread_str'].str[0:3] == merged_game_data['home_team'],

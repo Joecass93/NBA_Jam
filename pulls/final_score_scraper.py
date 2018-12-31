@@ -26,6 +26,7 @@ class FetchResults():
             self._format_scores()
             self._upload_to_db()
 
+
     def _get_scores(self, date):
         url_d = datetime.strptime(date, "%Y-%m-%d").strftime("%m/%d/%Y")
         scoreboard_url = 'http://stats.nba.com/stats/scoreboardV2?GameDate=%s&LeagueID=00&DayOffset=0'%url_d

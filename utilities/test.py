@@ -18,20 +18,20 @@ from pulls import spreads_scraper
 from utilities import db_connection_manager
 
 ### USE THIS TO SCRAPE SPREADS AND UPLOAD TO DB, AD HOC ###
-# engine = db_connection_manager.establish_db_connection('sqlalchemy')
-# conn = engine.connect()
-#
-# for d in range_all_dates("2018-12-25", "2018-12-25"):
-#     df = spreads_scraper.main(d)
-#     df.drop(columns = ['time'], inplace = True)
-#     df['date'] = df['date'].str[0:4] + "-" + df['date'].str[4:6] + "-" + df['date'].str[6:8]
-#
-#     df.to_sql('spreads', con = conn, if_exists = 'append', index = False)
+engine = db_connection_manager.establish_db_connection('sqlalchemy')
+conn = engine.connect()
 
-conn = db_connection_manager.establish_db_connection('sqlalchemy').connect()
-agg_stats = pd.read_sql("SELECT * FROM four_factors_thru", con = conn)
+for d in range_all_dates("2018-12-30", "2018-12-31"):
+    df = spreads_scraper.main(d)
+    df.drop(columns = ['time'], inplace = True)
+    df['date'] = df['date'].str[0:4] + "-" + df['date'].str[4:6] + "-" + df['date'].str[6:8]
 
-print agg_stats['as_of'].max()
+    df.to_sql('spreads', con = conn, if_exists = 'append', index = False)
+
+# conn = db_connection_manager.establish_db_connection('sqlalchemy').connect()
+# agg_stats = pd.read_sql("SELECT * FROM four_factors_thru", con = conn)
+#
+# print agg_stats['as_of'].max()
 
 #### MISC TEST FUNCTIONS ####
 # class Test():
