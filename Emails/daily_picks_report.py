@@ -15,7 +15,7 @@ import re
 class DailyPicksEmail():
 
     def __init__(self):
-        self.creds = email_config._get_email_creds()
+        # self.creds = email_config._get_email_creds()
         self.conn = establish_db_connection('sqlalchemy').connect()
         self.today = datetime.now().date().strftime("%m/%d/%Y")
         self.subject = "NBA Rundown for %s"%self.today
@@ -61,7 +61,7 @@ class DailyPicksEmail():
 
     def _send_email(self):
 
-        fromaddr = self.creds['user']
+        fromaddr = "joecass93@gmail.com"
         toaddr = self.degenerates
         msg = MIMEMultipart()
         msg['From'] = fromaddr
@@ -70,7 +70,7 @@ class DailyPicksEmail():
         msg.attach(MIMEText(self.body_html, 'html'))
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
-        server.login(fromaddr, self.creds['pw'])
+        server.login(fromaddr, "Steelers93!")
         text = msg.as_string()
         try:
             server.sendmail(fromaddr, toaddr, text)

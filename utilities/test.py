@@ -21,9 +21,9 @@ from utilities import db_connection_manager
 engine = db_connection_manager.establish_db_connection('sqlalchemy')
 conn = engine.connect()
 
-for d in range_all_dates("2018-12-30", "2018-12-31"):
+for d in range_all_dates("2019-01-15", "2019-01-15"):
     df = spreads_scraper.main(d)
-    df.drop(columns = ['time'], inplace = True)
+    df.drop(['time'], axis=1, inplace = True)
     df['date'] = df['date'].str[0:4] + "-" + df['date'].str[4:6] + "-" + df['date'].str[6:8]
 
     df.to_sql('spreads', con = conn, if_exists = 'append', index = False)

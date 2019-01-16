@@ -256,10 +256,10 @@ def format_spreads_data(spreads): ## Get team_ids and merge them into spreads da
 	team_cities['team_id'] = team_cities.index
 	spreads = spreads.merge(team_cities, how = 'left', left_on = 'team', right_on = 'team_city')
 	spreads['away_team_id'] = spreads['team_id']
-	spreads = spreads.drop(columns = ['team_id', 'team_city'])
+	spreads.drop(['team_id', 'team_city'], axis=1, inplace = True)
 	spreads = spreads.merge(team_cities, how = 'left', left_on = 'opp_team', right_on = 'team_city')
 	spreads['home_team_id'] = spreads['team_id']
-	spreads = spreads.drop(columns = ['team_id', 'team_city'])
+	spreads.drop(['team_id', 'team_city'], axis=1, inplace = True)
 
 	spreads = spreads[spreads['side'] == 'away']
 
