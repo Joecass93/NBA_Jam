@@ -126,8 +126,8 @@ class BuildPredictions():
         for g in self.agg_stats['GAME_ID'].unique():
             curr_game = self.agg_stats[self.agg_stats['GAME_ID'] == g]
 
-            #pred_spread = RunAlgo(curr_game[stats_list])._standard_algo()
-            pred_spread = RunAlgo(curr_game[stats_list])._linear_regression_algo()
+            pred_spread = RunAlgo(curr_game[stats_list])._standard_algo()
+            # pred_spread = RunAlgo(curr_game[stats_list])._linear_regression_algo()
 
             away_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'away')]['TEAM_ID'].item()
             home_id = curr_game[(curr_game['GAME_ID'] == g) & (curr_game['SIDE'] == 'home')]['TEAM_ID'].item()
