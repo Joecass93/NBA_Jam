@@ -5,9 +5,9 @@ from datetime import datetime, date, timedelta
 import json, requests, sys
 from argparse import ArgumentParser
 sys.path.insert(0,'%s/projects/NBA_Jam/'%expanduser('~'))
-from utilities.assets import range_all_dates
-from utilities.config import teams, spread_teams, request_header
-from utilities.db_connection_manager import establish_db_connection
+from nba_utilities.assets import range_all_dates
+from nba_utilities.config import teams, spread_teams, request_header
+from nba_utilities.db_connection_manager import establish_db_connection
 
 class FetchResults():
 

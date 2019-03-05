@@ -4,8 +4,7 @@ import sqlalchemy
 import pandas as pd
 import numpy as np
 from datetime import datetime, date, timedelta
-import sys
-from utilities.db_connection_manager import establish_db_connection
+from nba_utilities.db_connection_manager import establish_db_connection
 
 class PlayerStatsTransform():
 

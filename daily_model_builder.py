@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, date, timedelta
-from utilities.db_connection_manager import establish_db_connection
-from utilities import assets, result_calculator, config, four_factors_scraper, aggregate_stats_to_date
+from nba_utilities.db_connection_manager import establish_db_connection
+from nba_utilities import assets, result_calculator, config, four_factors_scraper, aggregate_stats_to_date
 from pulls import final_score_scraper
 from pulls import spreads_scraper as ss
 from algo_master import RunAlgo
@@ -27,18 +27,17 @@ class MasterUpdate():
         self._fetch_game_stats()
         self._fetch_final_scores()
         self._fetch_spreads()
-        self._calculate_results()
-        # self._update_db()
+        # self._calculate_results()
+        self._update_db()
 
-        aggregate_stats_to_date.AggregateTeamStats(self.prev_day, self.prev_day)
+        # aggregate_stats_to_date.AggregateTeamStats(self.prev_day, self.prev_day)
 
     def _fetch_game_stats(self):
         self.player_stats, self.team_stats = four_factors_scraper._fetch_game_stats(self.prev_day)
 
     def _fetch_final_scores(self):
-        # final_score_scraper.FetchResults(self.prev_day, self.prev_day)._fetch_raw_scores()
-        scores_sql = "SELECT * FROM final_scores WHERE game_date = '%s'"%self.prev_day
-        self.scores_df = pd.read_sql(scores_sql, con = self.conn)
+        score_scraper = final_score_scraper.FetchResults(self.prev_day, self.prev_day)
+        self.scores_df = score_scraper.clean_scores
 
     def _fetch_spreads(self):
         spreads_df = ss.main(self.today)
@@ -52,14 +51,14 @@ class MasterUpdate():
         prev_picks_sql = "SELECT * FROM historical_picks WHERE game_date = '%s'"%self.prev_day
         self.prev_picks = pd.read_sql(prev_picks_sql, con = self.conn)
         self.results = result_calculator.determine_results(self.scores_df, self.prev_picks)
-        print self.results
 
     def _update_db(self):
         schema = {'four_factors_player': self.player_stats,
                   'four_factors_team': self.team_stats,
-                  # 'final_scores': self.scores_df,
+                  'final_scores': self.scores_df,
                   'spreads': self.spreads_df,
-                  'results_table': self.results}
+                  # 'results_table': self.results
+                  }
 
         for tbl, data in schema.iteritems():
             print "Uploading data to %s"%tbl
@@ -169,7 +168,7 @@ class BuildPredictions():
         raw_df['abs_pt_diff'] = raw_df['pt_diff'].abs()
         raw_df['best_bet'] = np.where(raw_df['abs_pt_diff'] > 3.50, 'Y', 'N')
         gdate = raw_df['game_date'].max()
-        print raw_df
+
         raw_df['rank'] = (raw_df.groupby('game_date')['abs_pt_diff'].rank(ascending = False)).astype(int)
         raw_df.drop(columns = ['abs_pt_diff'], inplace = True)
         raw_df.sort_values(by = ['rank'], inplace = True)
@@ -211,5 +210,5 @@ def get_games_list(game_date):
     return games_df['GAME_ID'].tolist()
 
 if __name__ == "__main__":
-    # MasterUpdate()
+    MasterUpdate()
     BuildPredictions()
