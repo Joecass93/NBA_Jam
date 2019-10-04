@@ -16,7 +16,7 @@ class Main():
 
     def __init__(self):
         self.conn = establish_db_connection('sqlalchemy').connect()
-        self.date = '2019-03-21'
+        self.date = '2019-03-30'
         self.url = "https://kenpom.com/fanmatch.php?d=%s"%self.date
         path = "%s/Documents/knockout_creds.json"%expanduser("~")
         config = {
@@ -100,13 +100,13 @@ class Main():
         self.results = {self.date: results}
 
     def _send_to_jamal(self):
-        # for dt, data in self.games.iteritems():
-        #     for id, game in data.iteritems():
-        #         self.db.child('games/%s/%s'%(dt, id)).set({'home_id': game['home_id'], 'away_id': game['away_id']})
-
-        for dt, data in self.results.iteritems():
+        for dt, data in self.games.iteritems():
             for id, game in data.iteritems():
-                self.db.child('results/%s/%s'%(dt, id)).set({'winner':game['winner'], 'loser':game['loser']})
+                self.db.child('games/%s/%s'%(dt, id)).set({'home_id': game['home_id'], 'away_id': game['away_id']})
+
+        # for dt, data in self.results.iteritems():
+        #     for id, game in data.iteritems():
+        #         self.db.child('results/%s/%s'%(dt, id)).set({'winner':game['winner'], 'loser':game['loser']})
 
 def get_team(game, side, teams):
 

@@ -48,6 +48,7 @@ def four_factors_algo(team_a, team_b):
         algo_dict[s] = (temp[team_a].get(s) - temp[team_b].get(s)) * w
 
     spread = round((sum(algo_dict.values()) * 2), 3)
+    print spread
 
     return spread
 
@@ -88,4 +89,4 @@ def linear_algo(team_a, team_b):
 
 
 if __name__ == "__main__":
-    linear_algo('Duke', 'Gonzaga')
+    four_factors_algo('Wisconsin', 'Oregon')
