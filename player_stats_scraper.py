@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 import pandas as pd
 import requests
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import re
 from nba_utilities import mongo_connector as mc
 
@@ -137,6 +137,7 @@ advanced_stats = ['ts_pct', 'efg_pct', 'fg3a_per_fga_pct', 'fta_per_fga_pct', 'o
 
 teams = {'ATL': 'Atlanta Hawks',
          'BOS': 'Boston Celtics',
+         'BRK': 'Brooklyn Nets',
          'BKN': 'Brooklyn Nets',
          'NJN': 'Brooklyn Nets',
          'CHA': 'Charlotte Hornets',
@@ -171,12 +172,12 @@ teams = {'ATL': 'Atlanta Hawks',
          }
 
 if __name__ == "__main__":
-    for m in [10, 11, 12]:
-        for x in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                  17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]:
+    start = datetime(2019, 10, 17).date()
+    end = datetime(2019, 11, 17).date()
+    dates = [ (start + timedelta(1 * i)).strftime('%Y%m%d') for i in range(0, (end - start).days + 1) ]
 
-            try:
-                date = (datetime(2017, m, x).date()).strftime('%Y%m%d')
-                Main(date)
-            except:
-                pass
+    for d in dates:
+        try:
+            Main(d)
+        except Exception as e:
+            print e
