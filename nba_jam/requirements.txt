@@ -1,4 +1,4 @@
-Django==1.11.16
+Django==1.11.29
 django-tastypie==0.14.2
 MySQL-python==1.2.5
 python-dateutil==2.7.5
