@@ -39,7 +39,7 @@ class Main:
 
     ## Loops through the important data from each box score page, and stores in the appropriate db tables
     def _fetch_box_score_by_game(self):
-        for game in self.games[0:1]:
+        for game in self.games:
             print( f'  -> {game.split("/boxscores/")[1]}' )
 
             ## build url for the specific game's box score
@@ -50,13 +50,18 @@ class Main:
             soup = BeautifulSoup(html, features='lxml')
 
             ## basic game info (game id, home vs away, score by quarter)
-            # self._handle_game_info(soup, game)
+            print( '   * fetching game info' )
+            self._handle_game_info(soup, game)
 
             ## scores (by quarter & final)
+            print( '   * fetching scores by quarter' )
             self._handle_scores(soup, game)
 
             ## four factors data
-            # self._handle_four_factors(soup, game)
+            print( '   * fetching four factors data by team' )
+            self._handle_four_factors(soup, game)
+
+            print()
 
     ## Pulls & stores game info, including home & away teams
     def _handle_game_info(self, soup, game):
@@ -73,21 +78,17 @@ class Main:
 
         ## clean up the data we've gathered
         info = {
-            '$set': {
-                'home_id': home_id,
-                'away_id': away_id,
-                'date': (re.split('[A-z]+', game_id)[0])[0:-1]
-            }
+            '_id': game_id,
+            'home_id': home_id,
+            'away_id': away_id,
+            'date': (re.split('[A-z]+', game_id)[0])[0:-1]
         }
-
-        key = {'_id': game_id}
 
         ## store in the data warehouse
         try:
-            self.db.games.insert_one(key, info)
-        # handle update exception, if record already exists
-        except:
-            self.db.games.update_one(key, info)
+            self.db.games.insert_one(info)
+        except Exception as e:
+            print( e )
 
     ## Pulls & stores scores by quarter + total score for each team
     def _handle_scores(self, soup, game):
@@ -113,49 +114,43 @@ class Main:
         away_scores = score_df.iloc[0:1]
         away_team = away_scores['Team'].max()
 
-        away_key = {'_id': f"{game_id}.{away_team}"}
         away_info = {
-            '$set': {
-                'game_id': game_id,
-                'team_id': away_team,
-                'score_1q': str(away_scores['1'].max()),
-                'score_2q': str(away_scores['2'].max()),
-                'score_3q': str(away_scores['3'].max()),
-                'score_4q': str(away_scores['4'].max()),
-                'score_tot': str(away_scores['T'].max()),
-                'type': 'away'
-            }
+            '_id': f"{game_id}.{away_team}",
+            'game_id': game_id,
+            'team_id': away_team,
+            'score_1q': str(away_scores['1'].max()),
+            'score_2q': str(away_scores['2'].max()),
+            'score_3q': str(away_scores['3'].max()),
+            'score_4q': str(away_scores['4'].max()),
+            'score_tot': str(away_scores['T'].max()),
+            'type': 'away'
         }
 
         try:
-            self.db.four_factors.insert_one(away_key, away_info)
-        # handle update exception, if record already exists
-        except:
-            self.db.four_factors.update_one(away_key, away_info)
+            self.db.scores.insert_one(away_info)
+        except Exception as e:
+            print( e )
 
         ## store home team's scores
-        home_scores = score_df.iloc[0:1]
+        home_scores = score_df.iloc[1:2]
         home_team = home_scores['Team'].max()
 
-        home_key = {'_id': f"{game_id}.{home_team}"}
         home_info = {
-            '$set': {
-                'game_id': game_id,
-                'team_id': home_team,
-                'score_1q': str(home_scores['1'].max()),
-                'score_2q': str(home_scores['2'].max()),
-                'score_3q': str(home_scores['3'].max()),
-                'score_4q': str(home_scores['4'].max()),
-                'score_tot': str(home_scores['T'].max()),
-                'type': 'home'
-            }
+            '_id': f"{game_id}.{home_team}",
+            'game_id': game_id,
+            'team_id': home_team,
+            'score_1q': str(home_scores['1'].max()),
+            'score_2q': str(home_scores['2'].max()),
+            'score_3q': str(home_scores['3'].max()),
+            'score_4q': str(home_scores['4'].max()),
+            'score_tot': str(home_scores['T'].max()),
+            'type': 'home'
         }
 
         try:
-            self.db.four_factors.insert_one(home_key, home_info)
-        # handle update exception, if record already exists
-        except:
-            self.db.four_factors.update_one(home_key, home_info)
+            self.db.scores.insert_one(home_info)
+        except Exception as e:
+            print( e )
 
     ## Pulls & stores four factors data, for each team
     def _handle_four_factors(self, soup, game):
@@ -177,7 +172,49 @@ class Main:
         ## determine game id
         game_id = game.split('/boxscores/')[1].split('.html')[0]
 
+        ## store away team's data
+        away_ff = ff_df.iloc[0:1]
+        away_team = away_ff['Team'].max()
 
+        away_info = {
+            '_id': f"{game_id}.{away_team}",
+            'game_id': game_id,
+            'team_id': away_team,
+            'pace': str(away_ff['Pace'].max()),
+            'efg': str(away_ff['eFG%'].max()),
+            'tov': str(away_ff['TOV%'].max()),
+            'orb': str(away_ff['ORB%'].max()),
+            'ft-fga': str(away_ff['FT/FGA'].max()),
+            'ortg': str(away_ff['ORtg'].max()),
+            'type': 'away'
+        }
+
+        try:
+            self.db.four_factors.insert_one(away_info)
+        except Exception as e:
+            print( e )
+
+        ## store home team's data
+        home_ff = ff_df.iloc[1:2]
+        home_team = home_ff['Team'].max()
+
+        home_info = {
+            '_id': f"{game_id}.{home_team}",
+            'game_id': game_id,
+            'team_id': home_team,
+            'pace': str(home_ff['Pace'].max()),
+            'efg': str(home_ff['eFG%'].max()),
+            'tov': str(home_ff['TOV%'].max()),
+            'orb': str(home_ff['ORB%'].max()),
+            'ft-fga': str(home_ff['FT/FGA'].max()),
+            'ortg': str(home_ff['ORtg'].max()),
+            'type': 'home'
+        }
+
+        try:
+            self.db.four_factors.insert_one(home_info)
+        except Exception as e:
+            print( e )
 
 
 def runtime(date):
