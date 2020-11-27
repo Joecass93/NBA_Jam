@@ -122,8 +122,8 @@ team_map = {'Atlanta': 'ATL',
             }
 
 if __name__ == "__main__":
-    start = datetime(2019, 10, 17).date()
-    end = datetime(2019, 11, 18).date()
+    start = datetime(2019, 11, 18).date()
+    end = datetime(2019, 11, 30).date()
 
     dates = [ (start + timedelta(1 * i)).strftime('%Y%m%d') for i in range(0, (end - start).days + 1) ]
     for d in dates:

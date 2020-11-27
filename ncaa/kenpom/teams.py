@@ -1,29 +1,20 @@
-import pyrebase
-import firebase_admin
-from firebase_admin import credentials
-import pandas as pd
-from nba_utilities.db_connection_manager import establish_db_connection
-from os.path import expanduser
+from nba_utilities import mongo_connector as mc
+from bs4 import BeautifulSoup
+import requests
 
-### fetch teams
-conn = establish_db_connection('sqlalchemy').connect()
-teams = pd.read_sql('SELECT DISTINCT Team FROM kenpom_four_factors_data', con=conn)
-teams = [ t.strip() for t in teams['Team'] ]
+class TeamMaster:
+    """ Declare class variables. """
+    db, url = mc.main().warehouse.kenpom_teams, 'https://kenpom.com/index.php'
 
-### push to firebase
-path = "%s/Documents/knockout_creds.json"%expanduser("~")
-config = {
-    'apiKey': "AIzaSyDEhRpfi82QXYfDqo8L0Y54SLUUuTp7Vk0",
-    'authDomain': "ncaa-knockout-2019.firebaseapp.com",
-    'databaseURL': "https://ncaa-knockout-2019.firebaseio.com",
-    'projectId': "ncaa-knockout-2019",
-    'storageBucket': "ncaa-knockout-2019.appspot.com",
-    'messagingSenderId': "104831088386",
-    'serviceAccount':path
-  }
+    def __init__(self):
+        """ Main class function """
+        soup = BeautifulSoup(requests.get(self.url).content) # parse the kenpom front page
 
-firebase = pyrebase.initialize_app(config)
-db = firebase.database()
+        # loop over the rows and store team rankings
+        for row in [ tr for tr in soup.find_all('tr')[2:] if len(tr) == 22 ]:
+            rank = str(row.find_all('td')[0]).split('>')[1].split('<')[0] # extract rank and team items from row
+            team = str(row.find_all('td')[1]).split('team=')[1].split('"')[0] # extract rank and team items from row
+            self.db.update({'_id': team.replace('+', '_').replace('%27', '').lower()}, {'team': team, 'rank': rank}, upsert=True) # update db with daily rankings
 
-for t in teams:
-    db.child('teams').push({'team': t})
+if __name__ == "__main__":
+    TeamMaster()

@@ -5,56 +5,67 @@ import numpy as np
 import re
 import os
 import time
-from selenium import webdriver
+from selenium.webdriver import Firefox
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.keys import Keys
-from nba_utilities.db_connection_manager import establish_db_connection
+# from nba_utilities.db_connection_manager import establish_db_connection
+from nba_utilities import mongo_connector as mc
 
-
-######################
-#### Game Results by Team
-######################
+"""
+This section contains code for the Game Results by Team scraper.
+"""
 class GameResults():
 
+    # class variables
+    db, df = mc.main().warehouse, pd.DataFrame()
+
+    # initial function
     def __init__(self):
-        self.conn = establish_db_connection('sqlalchemy').connect()
-        self.url = "https://kenpom.com/team.php"
-        self.url_team = lambda x, y: '%s?team=%s&y=%s' % (self.url, str(x), str(y))
-
-        self.df = pd.DataFrame()
-
         self._determine_teams()
 
-        for i, team in enumerate(self.teams):
-            if i == 0:
-                self._start_session(team)
-                self._import_raw_team(team)
-            else:
-                time.sleep(5)
-                self._import_raw_team(team)
+        self._team_looper()
 
-        self.driver.close()
-
-        self._clean_data()
-        self._upload_data()
+        # for i, team in enumerate(self.teams):
+        #     if i == 0:
+        #         self._start_session(team)
+        #         self._import_raw_team(team)
+        #     else:
+        #         time.sleep(5)
+        #         self._import_raw_team(team)
+        #
+        # self.driver.close()
+        #
+        # self._clean_data()
+        # self._upload_data()
 
     def _determine_teams(self):
-        teams = pd.read_sql('SELECT Team FROM kenpom_season_data WHERE Year = 2019 AND Rank < 80', con=self.conn)
-        curr_teams = pd.read_sql('SELECT Team FROM kenpom_game_results', con=self.conn)
-        curr_teams = [ row['Team'] for index, row in curr_teams.iterrows() ]
-        self.teams = [ row['Team'] for index, row in teams.iterrows() ]
-        [ self.teams.remove(team) for team in curr_teams if team in self.teams ]
+        teams = pd.DataFrame( [ team for team in self.db.kenpom_teams.find({}) ] )
+        teams['rank'] = teams['rank'].astype(float)
+        self.teams = [ team for team in teams.sort_values('rank', ascending=True).head(1)['team'] ]
+
+    def _team_looper(self):
+        for i, team in enumerate(self.teams):
+            self._start_session(team) if i == 0 else self._fetch_team_data(team)
+
+    def _build_url(self, team, year):
+        url = 'https://kenpom.com/team.php?team=%s&y=%s' % (team, year)
+        return url
 
     def _start_session(self, team):
         if ' ' in team:
             team = team.replace(' ', '+')
-        self.driver = webdriver.Chrome(executable_path='chromedriver.exe')
-        self.driver.implicitly_wait(30)
-        self.driver.get(self.url_team(team, 2019))
 
-        inputElement = self.driver.find_element_by_name("email")
-        inputElement.send_keys('emac1144@yahoo.com')
-        inputElement = self.driver.find_element_by_name("password")
-        inputElement.send_keys('futurecane4')
+        self.browser = Firefox()
+        self.browser.get(self._build_url(team, 2020))
+        #
+        # self.driver = webdriver.Chrome(executable_path='chromedriver.exe')
+        # self.driver.implicitly_wait(30)
+        # self.driver.get(self.url_team(team, 2019))
+
+        inputElement = self.browser.find_element_by_name("email")
+        inputElement.send_keys('Smbeyman@gmail.com')
+        inputElement = self.browser.find_element_by_name("password")
+        inputElement.send_keys('Kemba19!')
         inputElement.send_keys(Keys.ENTER)
 
     def _import_raw_team(self, team):
@@ -105,13 +116,13 @@ class GameResults():
     def _upload_data(self):
         self.df.to_sql('kenpom_game_results', con=self.conn, if_exists='append', index=False)
 
-######################
-#### Kenpom Regular Season Team Four Factors Data Scraper
-######################
+"""
+This section contains code for the Four Factors by Team scraper.
+"""
 class FourFactorsData():
 
     def __init__(self):
-        self.conn = establish_db_connection('sqlalchemy').connect()
+        # self.conn = establish_db_connection('sqlalchemy').connect()
         self.url = "https://kenpom.com/stats.php"
         self.url_year = lambda x: '%s?y=%s' % (self.url, str(x))
 
@@ -182,9 +193,9 @@ class FourFactorsData():
         # clean = self.df.append(subset)
         # clean.to_sql('kenpom_four_factors_data', con=self.conn, if_exists='replace', index=False)
 
-######################
-#### Kenpom Regular Season Front Page Team Scraper
-######################
+"""
+This section contains code for the Season data by Team.
+"""
 class SeasonData():
 
     def __init__(self):
@@ -247,5 +258,5 @@ class SeasonData():
 
 if __name__ == "__main__":
     # SeasonData()
-    FourFactorsData()
-    # GameResults()
+    # FourFactorsData()
+    GameResults()

@@ -24,15 +24,16 @@ class Main:
         elif (table == 'spreads') & (date is None):
             data = self.db.spreads_by_game.find({})
 
-        # loop through attribution data and create dataframe
-        stats_list = []
-        for x in data:
-            stats_list.append(x)
+        # rosters
+        elif table == 'rosters':
+            data = self.db.rosters.find({})
+
+        # loop through data and create dataframe
+        field_list = []
+        for field in data:
+            field_list.append(field)
 
         # build pandas dataframe
-        self.df = pd.DataFrame(stats_list)
-        self.df['date'] = self.df.apply(lambda row: datetime.strptime(row['date'], '%Y%m%d'), axis=1)
-
-
-if __name__ == "__main__":
-    Main('spreads')
+        self.df = pd.DataFrame(field_list)
+        if 'date' in self.df.columns:
+            self.df['date'] = self.df.apply(lambda row: datetime.strptime(row['date'], '%Y%m%d'), axis=1)
