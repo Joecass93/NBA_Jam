@@ -39,7 +39,7 @@ class Main:
 
     ## Loops through the important data from each box score page, and stores in the appropriate db tables
     def _fetch_box_score_by_game(self):
-        for game in self.games:
+        for game in self.games[0:1]:
             print( f'  -> {game.split("/boxscores/")[1]}' )
 
             ## build url for the specific game's box score
@@ -55,11 +55,15 @@ class Main:
 
             ## scores (by quarter & final)
             print( '   * fetching scores by quarter' )
-            self._handle_scores(soup, game)
+            # self._handle_scores(soup)
 
             ## four factors data
             print( '   * fetching four factors data by team' )
-            self._handle_four_factors(soup, game)
+            # self._handle_four_factors(soup)
+
+            ## box score data
+            print( '   * fetch box score data by player' )
+            self._handle_box_scores(soup)
 
             print()
 
@@ -70,18 +74,18 @@ class Main:
 
         ## get home & away team names from scoreboard
         info_links = info_soup.find_all('a', {'itemprop': 'name'})
-        away_id = str(info_links[0]).split('/teams/')[1].split('/')[0]
-        home_id = str(info_links[1]).split('/teams/')[1].split('/')[0]
+        self.away_id = str(info_links[0]).split('/teams/')[1].split('/')[0]
+        self.home_id = str(info_links[1]).split('/teams/')[1].split('/')[0]
 
         ## determine game id
-        game_id = game.split('/boxscores/')[1].split('.html')[0]
+        self.game_id = game.split('/boxscores/')[1].split('.html')[0]
 
         ## clean up the data we've gathered
         info = {
-            '_id': game_id,
-            'home_id': home_id,
-            'away_id': away_id,
-            'date': (re.split('[A-z]+', game_id)[0])[0:-1]
+            '_id': self.game_id,
+            'home_id': self.home_id,
+            'away_id': self.away_id,
+            'date': (re.split('[A-z]+', self.game_id)[0])[0:-1]
         }
 
         ## store in the data warehouse
@@ -91,7 +95,7 @@ class Main:
             print( e )
 
     ## Pulls & stores scores by quarter + total score for each team
-    def _handle_scores(self, soup, game):
+    def _handle_scores(self, soup):
         ## return the line score section of the html
         score_soup = soup.find_all('div', {'id': 'all_line_score'})[0]
 
@@ -107,16 +111,13 @@ class Main:
         score_df.columns = score_df.columns.droplevel()
         score_df = score_df.rename(columns={'Unnamed: 0_level_1': 'Team'})
 
-        ## determine game id
-        game_id = game.split('/boxscores/')[1].split('.html')[0]
-
         ## store away team's scores
         away_scores = score_df.iloc[0:1]
         away_team = away_scores['Team'].max()
 
         away_info = {
-            '_id': f"{game_id}.{away_team}",
-            'game_id': game_id,
+            '_id': f"{self.game_id}.{away_team}",
+            'game_id': self.game_id,
             'team_id': away_team,
             'score_1q': str(away_scores['1'].max()),
             'score_2q': str(away_scores['2'].max()),
@@ -136,8 +137,8 @@ class Main:
         home_team = home_scores['Team'].max()
 
         home_info = {
-            '_id': f"{game_id}.{home_team}",
-            'game_id': game_id,
+            '_id': f"{self.game_id}.{home_team}",
+            'game_id': self.game_id,
             'team_id': home_team,
             'score_1q': str(home_scores['1'].max()),
             'score_2q': str(home_scores['2'].max()),
@@ -153,7 +154,7 @@ class Main:
             print( e )
 
     ## Pulls & stores four factors data, for each team
-    def _handle_four_factors(self, soup, game):
+    def _handle_four_factors(self, soup):
         ## return the four factor section of the html
         ff_soup = soup.find_all('div', {'id': 'all_four_factors'})[0]
 
@@ -170,15 +171,15 @@ class Main:
         ff_df = ff_df.rename(columns={'Unnamed: 0_level_1': 'Team'})
 
         ## determine game id
-        game_id = game.split('/boxscores/')[1].split('.html')[0]
+        self.game_id = game.split('/boxscores/')[1].split('.html')[0]
 
         ## store away team's data
         away_ff = ff_df.iloc[0:1]
         away_team = away_ff['Team'].max()
 
         away_info = {
-            '_id': f"{game_id}.{away_team}",
-            'game_id': game_id,
+            '_id': f"{self.game_id}.{away_team}",
+            'game_id': self.game_id,
             'team_id': away_team,
             'pace': str(away_ff['Pace'].max()),
             'efg': str(away_ff['eFG%'].max()),
@@ -199,8 +200,8 @@ class Main:
         home_team = home_ff['Team'].max()
 
         home_info = {
-            '_id': f"{game_id}.{home_team}",
-            'game_id': game_id,
+            '_id': f"{self.game_id}.{home_team}",
+            'game_id': self.game_id,
             'team_id': home_team,
             'pace': str(home_ff['Pace'].max()),
             'efg': str(home_ff['eFG%'].max()),
@@ -215,6 +216,45 @@ class Main:
             self.db.four_factors.insert_one(home_info)
         except Exception as e:
             print( e )
+
+    ## Pulls & stores box score data, by player, for each team
+    def _handle_box_scores(self, soup):
+
+        ## loop over the two teams and scrape/store their box score data
+        for team in [self.away_id, self.home_id]:
+
+            ## return the team's box score section
+            html_tbl = soup.find_all('table', {'id': f'box-{team}-game-basic'})[0]
+            df = pd.read_html(str(html_tbl))[0]
+
+            ## drop the first layer of column headers
+            df.columns = df.columns.droplevel()
+
+            ## rename a few columns
+            df = df.rename(columns={'Starters': 'Player', 'FG%': 'FGPerc', '3P%': '3PPerc', 'FT%': 'FTPerc', '+/-': 'PlusMinus'})
+
+            ## remove reserves row (contains duplicate headers), and team totals row (can calc this on the fly)
+            df = df[~df['Player'].isin(['Reserves', 'Team Totals'])]
+
+            ## remove any rows that Did Not Play
+            df = df[df['MP'] != 'Did Not Play']
+
+            ## fill missing data with 0s
+            df = df.fillna('0')
+
+            ## now store each row in the database
+            for idx, row in df.iterrows():
+                data = {}
+                for col in df.columns:
+                    data[col.lower()] = row[col]
+
+                data['team'] = team
+                data['game_id'] = self.game_id
+                data['player_id'] = f"{row['Player'][0:3]}{row['Player'].split(' ')[1]}" # firlastname ID
+                data['_id'] = f"{self.game_id}.{data['player_id']}"
+
+                print( data )
+                print()
 
 
 def runtime(date):
