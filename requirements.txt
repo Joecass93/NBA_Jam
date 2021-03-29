@@ -105,7 +105,7 @@ PuLP==1.6.8
 py2app==0.7.3
 pyasn1==0.4.4
 pyasn1-modules==0.2.2
-Pygments==2.2.0
+Pygments==2.7.4
 pyOpenSSL==0.13.1
 pyparsing==2.0.1
 python-dateutil==2.5.3
