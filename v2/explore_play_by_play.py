@@ -16,14 +16,14 @@ class DataExplorer:
     def _fetch_raw_data(self):
         ## Import play-by-play dataset for the selected season ##
         file = f'{self.workdir}/NBA-PBP-{self.season}.csv'
-        file = f'{self.workdir}/temp_pbp_data.csv'
+        # file = f'{self.workdir}/temp_pbp_data.csv'
         self.df = pd.read_csv(file, sep=',')
 
     def _explore(self):
         ## Select all of the plays from a game and explore
-        # game_id = '201910220TOR'
-        # df = self.df[self.df['URL'].str.contains(game_id)]
-        # df.to_csv(f'{self.workdir}/temp_pbp_data.csv')
+        game_id = '201910220TOR'
+        df = self.df[self.df['URL'].str.contains(game_id)]
+        df.to_csv(f'{self.workdir}/temp_pbp_data.csv')
         df = self.df.fillna('')
 
         ## Which team made the play?
@@ -34,7 +34,7 @@ class DataExplorer:
         df['PlayType'] = df.apply(lambda row: play_type(row['ShotOutcome'], row['ReboundType'], row['ViolationType'], row['TimeoutTeam'], row['FreeThrowOutcome'], row['EnterGame'], row['TurnoverType'], row['JumpballPoss']), axis=1)
 
 
-def play_type(shot, rebound, violation, timeout, freethrow, ,turnover, jumpball):
+def play_type(shot, rebound, violation, timeout, freethrow, turnover, jumpball):
     args = locals()
     for x in args:
         if x != '':
