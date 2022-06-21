@@ -82,7 +82,7 @@ murmurhash==1.0.1
 nba-py==0.1.1a2
 nbformat==4.4.0
 nose==1.3.7
-numpy==1.15.4
+numpy==1.22.0
 oauth2client==4.1.3
 oauthlib==2.1.0
 openpyxl==2.3.5
